@@ -1,0 +1,10 @@
+{
+	"files.exclude": {
+		"**/.cache": true,
+		"dist": true,
+		"docs": true
+	},
+	"cSpell.words": [
+		"firestore"
+	]
+}

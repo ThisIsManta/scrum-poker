@@ -3,7 +3,10 @@ import { render } from 'react-dom'
 import * as Firebase from 'firebase/app'
 import 'firebase/auth'
 import 'firebase/firestore'
+import { BrowserRouter, Route, RouteComponentProps } from 'react-router-dom'
+import { createMuiTheme, MuiThemeProvider } from '@material-ui/core/styles'
 
+import './index.less'
 import Root from './Root'
 
 const firebase = Firebase.initializeApp({
@@ -17,4 +20,18 @@ const firebase = Firebase.initializeApp({
 })
 const database = firebase.firestore()
 
-render(<Root database={database} />, document.getElementById('root'))
+render((
+	<MuiThemeProvider theme={createMuiTheme({ palette: { type: 'dark' } })}>
+		<BrowserRouter>
+			<Route path='/:session' >
+				{({ match, history }: RouteComponentProps<{ session: string }>) => (
+					<Root
+						session={match && match.params && match.params.session || ''}
+						history={history}
+						database={database}
+					/>
+				)}
+			</Route>
+		</BrowserRouter>
+	</MuiThemeProvider>
+), document.getElementById('root'))

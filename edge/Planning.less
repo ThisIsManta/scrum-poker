@@ -1,0 +1,66 @@
+.planning__cards {
+	display: flex;
+	flex-flow: wrap;
+	justify-content: center;
+	padding: 8px;
+    min-height: 100vh;
+    align-items: center;
+	box-sizing: border-box;
+	align-content: space-evenly;
+
+	> * {
+		margin: 8px !important;
+	}
+}
+
+.planning__flex-full {
+	display: flex;
+	flex: 1;
+}
+
+.planning__players {
+	display: flex;
+	flex-flow: wrap;
+	justify-content: center;
+	align-content: center;
+	box-sizing: border-box;
+	margin: -4px;
+
+	&.--left {
+		justify-content: flex-start;
+	}
+
+	&.--tall {
+		min-height: 100vh;
+	}
+
+	> * {
+		margin: 4px;
+	}
+}
+
+.planning__results {
+	margin: 24px 0;
+	opacity: 0;
+	transition: opacity 1s ease-out;
+
+	&.--fade-in {
+		opacity: 1;
+	}
+}
+
+.planning__buttons {
+	position: fixed;
+	bottom: 16px;
+	right: 16px;
+	display: flex;
+	justify-content: flex-end;
+
+	> * {
+		margin-left: 16px !important;
+	}
+
+	.MuiIcon-root {
+		font-size: 2em !important;
+	}
+}
