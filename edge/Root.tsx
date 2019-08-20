@@ -1,4 +1,4 @@
-import * as Firebase from 'firebase'
+import { firestore } from 'firebase/app'
 import * as React from 'react'
 import { RouteComponentProps } from 'react-router-dom'
 import * as _ from 'lodash'
@@ -9,7 +9,7 @@ import Planning from './Planning'
 export default function Root(props: {
 	session: string
 	history: RouteComponentProps['history']
-	database: Firebase.firestore.Firestore
+	database: firestore.Firestore
 }) {
 	const session = props.session || window.localStorage.getItem('session') || ''
 	const acronym = window.localStorage.getItem('acronym') || ''
@@ -37,7 +37,7 @@ export default function Root(props: {
 	return (
 		<Planning
 			acronym={acronym}
-			document={getDocument(session.toLowerCase())}
+			document={getDocument(props.session.toLowerCase())}
 			onSessionDelete={() => {
 				props.history.replace('/')
 			}}

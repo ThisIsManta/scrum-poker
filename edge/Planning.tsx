@@ -1,4 +1,4 @@
-import * as Firebase from 'firebase'
+import { firestore } from 'firebase/app'
 import * as React from 'react'
 import { Redirect } from 'react-router-dom'
 import Container from '@material-ui/core/Container'
@@ -36,7 +36,7 @@ interface ISession {
 
 export default function Planning(props: {
 	acronym: string
-	document: Firebase.firestore.DocumentReference
+	document: firestore.DocumentReference
 	onSessionDelete: () => void
 }) {
 	const [data, setData] = React.useState<ISession>()
@@ -108,7 +108,7 @@ export default function Planning(props: {
 	}
 
 	const onPersonKicked = (name: string) => {
-		props.document.update(`players.${name}`, Firebase.firestore.FieldValue.delete())
+		props.document.update(`players.${name}`, firestore.FieldValue.delete())
 	}
 
 	if (!data) {
@@ -169,7 +169,7 @@ export default function Planning(props: {
 			.value()
 
 		return (
-			<Container className='planning__results --fade-in' maxWidth='sm'>
+			<Container className='planning__results' maxWidth='sm'>
 				<Grid container direction='column' spacing={2}>
 					{finalResults.map(result => (
 						<Grid item key={result.score}>
