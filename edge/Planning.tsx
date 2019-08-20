@@ -5,8 +5,10 @@ import Container from '@material-ui/core/Container'
 import Grid from '@material-ui/core/Grid'
 import Fab from '@material-ui/core/Fab'
 import Icon from '@material-ui/core/Icon'
-import Menu from '@material-ui/core/Menu'
-import MenuItem from '@material-ui/core/MenuItem'
+import Dialog from '@material-ui/core/Dialog'
+import DialogTitle from '@material-ui/core/DialogTitle'
+import List from '@material-ui/core/List'
+import ListItem from '@material-ui/core/ListItem'
 import * as _ from 'lodash'
 import FlipMove from 'react-flip-move'
 
@@ -38,7 +40,7 @@ export default function Planning(props: {
 	onSessionDelete: () => void
 }) {
 	const [data, setData] = React.useState<ISession>()
-	const [menuVisible, setMenuVisible] = React.useState(false)
+	const [personRemovalDialogVisible, setRemovalPersonDialogVisible] = React.useState(false)
 	const menuRef = React.useRef()
 
 	React.useEffect(() => {
@@ -122,16 +124,20 @@ export default function Planning(props: {
 		<div className='planning__buttons'>
 			{everyoneIsVoted && <Fab onClick={onSessionReset}><Icon>autorenew</Icon></Fab>}
 
-			{_.isEmpty(data.players) === false && <Fab ref={menuRef} onClick={() => { setMenuVisible(true) }}><Icon>remove_circle_outline</Icon></Fab>}
-			<Menu
-				anchorEl={menuRef ? menuRef.current : null}
-				open={menuVisible}
-				onClose={() => { setMenuVisible(false) }}
-			>
-				{_.chain(data.players).keys().sortBy().map(name => (
-					<MenuItem key={name} onClick={() => { onPersonKicked(name) }}>{name}</MenuItem>
-				)).value()}
-			</Menu>
+			{_.isEmpty(data.players) === false && <Fab ref={menuRef} onClick={() => { setRemovalPersonDialogVisible(true) }}><Icon>remove_circle_outline</Icon></Fab>}
+			<Dialog onClose={() => { setRemovalPersonDialogVisible(false) }} open={personRemovalDialogVisible}>
+				<DialogTitle>Remove a person</DialogTitle>
+				<List>
+					{_.chain(data.players).keys().sortBy().map(name => (
+						<ListItem button key={name} onClick={() => {
+							onPersonKicked(name)
+							setRemovalPersonDialogVisible(false)
+						}}>
+							{name}
+						</ListItem>
+					)).value()}
+				</List>
+			</Dialog>
 
 			<Fab onClick={onSessionDeleted}><Icon>delete_forever</Icon></Fab>
 		</div>
