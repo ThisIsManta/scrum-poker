@@ -72,7 +72,7 @@ export default function Planning(props: {
 				const session = snapshot.data() as ISession
 				console.log(session)
 
-				if (!session) {
+				if (!session || session.players[props.acronym] === undefined && session.master !== props.acronym) {
 					props.onSessionDelete()
 					return
 				}
@@ -99,12 +99,14 @@ export default function Planning(props: {
 				lastScore: Score.Unvoted,
 			})),
 		})
-		setMenuVisible(false)
 	}
 
-	const onSessionDelete = () => {
+	const onSessionDeleted = () => {
 		props.document.delete()
-		setMenuVisible(false)
+	}
+
+	const onPersonKicked = (name: string) => {
+		props.document.update(`players.${name}`, Firebase.firestore.FieldValue.delete())
 	}
 
 	if (!data) {
@@ -113,25 +115,30 @@ export default function Planning(props: {
 
 	const currentUserIsScrumMaster = data.master === props.acronym
 
+	const everyoneIsVoted = _.isEmpty(data.players) === false &&
+		_.every(data.players, player => player.lastScore !== Score.Unvoted)
+
 	const floatingButton = currentUserIsScrumMaster && (
 		<div className='planning__buttons'>
-			<Fab onClick={onSessionReset}><Icon>autorenew</Icon></Fab>
-			<Fab ref={menuRef} onClick={() => { setMenuVisible(true) }}><Icon>menu</Icon></Fab>
+			{everyoneIsVoted && <Fab onClick={onSessionReset}><Icon>autorenew</Icon></Fab>}
+
+			{_.isEmpty(data.players) === false && <Fab ref={menuRef} onClick={() => { setMenuVisible(true) }}><Icon>remove_circle_outline</Icon></Fab>}
 			<Menu
 				anchorEl={menuRef ? menuRef.current : null}
 				open={menuVisible}
 				onClose={() => { setMenuVisible(false) }}
 			>
-				<MenuItem onClick={onSessionDelete}>Delete this session</MenuItem>
-				<MenuItem disabled>Kick a person</MenuItem>
+				{_.chain(data.players).keys().sortBy().map(name => (
+					<MenuItem key={name} onClick={() => { onPersonKicked(name) }}>{name}</MenuItem>
+				)).value()}
 			</Menu>
+
+			<Fab onClick={onSessionDeleted}><Icon>delete_forever</Icon></Fab>
 		</div>
 	)
 
 	const myScore = currentUserIsScrumMaster ? Score.Unvoted : data.players[props.acronym].lastScore
 
-	const everyoneIsVoted = _.isEmpty(data.players) === false &&
-		_.every(data.players, player => player.lastScore !== Score.Unvoted)
 	if (everyoneIsVoted) {
 		const sortedScores = _.chain(Score)
 			.values()
