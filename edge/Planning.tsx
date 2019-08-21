@@ -9,6 +9,8 @@ import Dialog from '@material-ui/core/Dialog'
 import DialogTitle from '@material-ui/core/DialogTitle'
 import List from '@material-ui/core/List'
 import ListItem from '@material-ui/core/ListItem'
+import SpeedDial from '@material-ui/lab/SpeedDial'
+import SpeedDialAction from '@material-ui/lab/SpeedDialAction'
 import * as _ from 'lodash'
 import FlipMove from 'react-flip-move'
 
@@ -38,11 +40,12 @@ interface ISession {
 export default function Planning(props: {
 	currentUser: Firebase.User
 	document: Firebase.firestore.DocumentReference
-	onSessionDelete: () => void
+	onSessionDeleted: () => void
+	showFlashMessage: (message: string) => void
 }) {
 	const [data, setData] = React.useState<ISession>()
+	const [speedDialMenuVisible, setSpeedDialMenuVisible] = React.useState(false)
 	const [personRemovalDialogVisible, setRemovalPersonDialogVisible] = React.useState(false)
-	const menuRef = React.useRef()
 
 	React.useEffect(() => {
 		let unsubscribe = _.noop;
@@ -79,7 +82,9 @@ export default function Planning(props: {
 				console.log(session)
 
 				if (!session || session.players[props.currentUser.email] === undefined && session.master !== props.currentUser.email) {
-					props.onSessionDelete()
+					props.showFlashMessage('You have been removed from the session')
+
+					props.onSessionDeleted()
 					return
 				}
 
@@ -91,7 +96,7 @@ export default function Planning(props: {
 			unmounted = true
 			unsubscribe()
 		}
-	}, [props.document])
+	}, [])
 
 	if (!props.currentUser) {
 		return <Redirect to='/' />
@@ -107,11 +112,7 @@ export default function Planning(props: {
 		})
 	}
 
-	const onSessionDeleted = () => {
-		props.document.delete()
-	}
-
-	const onPersonKicked = (email: string) => {
+	const onPersonRemoved = (email: string) => {
 		props.document.update(
 			new Firebase.firestore.FieldPath('players', email),
 			Firebase.firestore.FieldValue.delete()
@@ -127,17 +128,45 @@ export default function Planning(props: {
 	const everyoneIsVoted = _.isEmpty(data.players) === false &&
 		_.every(data.players, player => player.lastScore !== Score.Unvoted)
 
-	const floatingButton = currentUserIsScrumMaster && (
+	const floatingButtons = currentUserIsScrumMaster && (
 		<div className='planning__buttons'>
 			{everyoneIsVoted && <Fab onClick={onSessionReset}><Icon>autorenew</Icon></Fab>}
 
-			{_.isEmpty(data.players) === false && <Fab ref={menuRef} onClick={() => { setRemovalPersonDialogVisible(true) }}><Icon>remove_circle_outline</Icon></Fab>}
-			<Dialog onClose={() => { setRemovalPersonDialogVisible(false) }} open={personRemovalDialogVisible}>
+			<SpeedDial
+				ariaLabel="SpeedDial"
+				open={speedDialMenuVisible}
+				icon={<Icon>menu</Icon>}
+				onClick={() => {
+					setSpeedDialMenuVisible(value => !value)
+				}}
+			>
+				{_.isEmpty(data.players) === false && <SpeedDialAction
+					className='planning__speed-dial'
+					icon={<Icon>remove_circle_outline</Icon>}
+					tooltipTitle='Remove a person'
+					tooltipOpen
+					onClick={() => {
+						setRemovalPersonDialogVisible(true)
+						setSpeedDialMenuVisible(false)
+					}}
+				/>}
+				<SpeedDialAction
+					className='planning__speed-dial'
+					icon={<Icon>delete_forever</Icon>}
+					tooltipTitle='Delete this session'
+					tooltipOpen
+					onClick={() => {
+						props.document.delete()
+					}}
+				/>
+			</SpeedDial>
+
+			<Dialog open={personRemovalDialogVisible} onClose={() => { setRemovalPersonDialogVisible(false) }}>
 				<DialogTitle>Remove a person</DialogTitle>
 				<List>
 					{_.chain(data.players).keys().sortBy().map(email => (
 						<ListItem button key={email} onClick={() => {
-							onPersonKicked(email)
+							onPersonRemoved(email)
 							setRemovalPersonDialogVisible(false)
 						}}>
 							{getAcronym(email)} ({email})
@@ -145,8 +174,6 @@ export default function Planning(props: {
 					)).value()}
 				</List>
 			</Dialog>
-
-			<Fab onClick={onSessionDeleted}><Icon>delete_forever</Icon></Fab>
 		</div>
 	)
 
@@ -216,7 +243,7 @@ export default function Planning(props: {
 						</Grid>
 					))}
 				</Grid>
-				{floatingButton}
+				{floatingButtons}
 			</Container>
 		)
 	}
@@ -225,7 +252,7 @@ export default function Planning(props: {
 		return (
 			<React.Fragment>
 				<PeerProgress players={data.players} grand />
-				{floatingButton}
+				{floatingButtons}
 			</React.Fragment>
 		)
 	}
