@@ -12,9 +12,20 @@ const emailToAcronymMap = {
 }
 
 export function getAcronym(email: string) {
-	return emailToAcronymMap[email] || _.chain(_.words(email.split('@')[0]))
-		.take(2)
-		.map(name => name.substring(0, 1).toUpperCase())
-		.value()
-		.join('')
+	if (emailToAcronymMap[email]) {
+		return emailToAcronymMap[email]
+	}
+
+	const emailName = email.split('@')[0]
+	const [firstWord, secondWord] = _.words(emailName)
+	if (secondWord) {
+		return (firstWord.charAt(0) + secondWord.charAt(0)).toUpperCase()
+	}
+
+	const nonVowel = /[^aeiou_\-\.]/ig
+	const firstChar = /^[aeiou]/i.test(firstWord)
+		? firstWord.charAt(0)
+		: _.get(firstWord.match(nonVowel), '0', firstWord.charAt(0))
+	const secondChar = _.get(firstWord.match(nonVowel), '1', firstWord.charAt(1) || '')
+	return (firstChar + secondChar).toUpperCase()
 }
