@@ -26,7 +26,12 @@ export default function Lobby(props: {
 							onChange={e => {
 								setSession(e.target.value.toLowerCase())
 							}}
-							autoFocus={session === ''}
+							onKeyUp={e => {
+								if (e.key === 'Enter' && session) {
+									props.onSubmit(session)
+								}
+							}}
+							autoFocus={!session}
 						/>
 					</Grid>
 					<Grid item className='lobby__button'>
@@ -36,7 +41,7 @@ export default function Lobby(props: {
 							onClick={() => {
 								props.onSubmit(session)
 							}}
-							disabled={!session.trim() || !props.onSubmit}
+							disabled={!session || !props.onSubmit}
 						>
 							Join
 						</Button>

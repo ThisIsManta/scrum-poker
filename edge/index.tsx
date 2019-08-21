@@ -8,6 +8,7 @@ import { createMuiTheme, MuiThemeProvider } from '@material-ui/core/styles'
 
 import './index.less'
 import Root from './Root'
+import Flash from './Flash'
 
 const firebase = Firebase.initializeApp({
 	apiKey: "AIzaSyBpIZCRRZC-FpsnilNZRCsUTbyw2eLc1xY",
@@ -21,15 +22,21 @@ const firebase = Firebase.initializeApp({
 const database = firebase.firestore()
 
 render((
-	<MuiThemeProvider theme={createMuiTheme({ palette: { type: 'dark' } })}>
+	<MuiThemeProvider theme={createMuiTheme({ palette: { type: 'dark', primary: { main: '#ffffff' } } })}>
 		<BrowserRouter>
 			<Route path='/:session' >
 				{({ match, history }: RouteComponentProps<{ session: string }>) => (
-					<Root
-						session={match && match.params && match.params.session || ''}
-						history={history}
-						database={database}
-					/>
+					<Flash>
+						{showFlashMessage => (
+							<Root
+								session={match && match.params && match.params.session || ''}
+								history={history}
+								database={database}
+								showFlashMessage={showFlashMessage}
+							/>
+
+						)}
+					</Flash>
 				)}
 			</Route>
 		</BrowserRouter>

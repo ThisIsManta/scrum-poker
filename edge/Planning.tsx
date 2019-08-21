@@ -1,6 +1,5 @@
 import * as Firebase from 'firebase/app'
 import * as React from 'react'
-import { Redirect } from 'react-router-dom'
 import Container from '@material-ui/core/Container'
 import Grid from '@material-ui/core/Grid'
 import Fab from '@material-ui/core/Fab'
@@ -11,12 +10,14 @@ import List from '@material-ui/core/List'
 import ListItem from '@material-ui/core/ListItem'
 import SpeedDial from '@material-ui/lab/SpeedDial'
 import SpeedDialAction from '@material-ui/lab/SpeedDialAction'
+import Slide from '@material-ui/core/Slide'
 import * as _ from 'lodash'
 import FlipMove from 'react-flip-move'
 
 import './Planning.less'
 import Card from './Card'
 import Avatar from './Avatar'
+import Box from './Box'
 import { getAcronym } from './getAcronym'
 
 export enum Score {
@@ -64,10 +65,11 @@ export default function Planning(props: {
 			} catch (ex) {
 				if (ex.code === 'permission-denied') {
 					props.showFlashMessage(`Your email ${props.currentUser.email} is denied. Only @taskworld.com emails are allowed to access this service.`)
+					Firebase.auth().signOut()
 				} else {
 					props.showFlashMessage(_.isString(ex) ? ex : ex.message)
+					props.navigateToLobby()
 				}
-				props.navigateToLobby()
 				return
 			}
 
@@ -135,10 +137,14 @@ export default function Planning(props: {
 
 	const floatingButtons = currentUserIsScrumMaster && (
 		<div className='planning__buttons'>
-			{everyoneIsVoted && <Fab onClick={onSessionReset}><Icon>autorenew</Icon></Fab>}
+			{everyoneIsVoted && (
+				<Fab onClick={onSessionReset}>
+					<Icon>autorenew</Icon>
+				</Fab>
+			)}
 
 			<SpeedDial
-				ariaLabel="SpeedDial"
+				ariaLabel='SpeedDial'
 				open={speedDialMenuVisible}
 				icon={<Icon>menu</Icon>}
 				onClick={() => {
@@ -212,39 +218,41 @@ export default function Planning(props: {
 				<Grid container direction='column' spacing={2}>
 					{finalResults.map(result => (
 						<Grid item key={result.score}>
-							<Grid container direction='row' spacing={2}>
-								<Grid item>
-									<Card
-										selected={result.score === myScore}
-										disabled={currentUserIsScrumMaster}
-										onClick={score => {
-											if (score === myScore) {
-												return
-											}
-
-											props.document.update(
-												new Firebase.firestore.FieldPath('players', props.currentUser.email),
-												{
-													...data.players[props.currentUser.email],
-													lastScore: score,
-													timestamp: new Date().toISOString(),
+							<Slide direction='up' in mountOnEnter unmountOnExit>
+								<Grid container direction='row' spacing={2}>
+									<Grid item>
+										<Card
+											selected={result.score === myScore}
+											disabled={currentUserIsScrumMaster}
+											onClick={score => {
+												if (score === myScore) {
+													return
 												}
-											)
-										}}
-									>
-										{result.score}
-									</Card>
+
+												props.document.update(
+													new Firebase.firestore.FieldPath('players', props.currentUser.email),
+													{
+														...data.players[props.currentUser.email],
+														lastScore: score,
+														timestamp: new Date().toISOString(),
+													}
+												)
+											}}
+										>
+											{result.score}
+										</Card>
+									</Grid>
+									<Grid item className='planning__flex-full'>
+										<FlipMove className='planning__players --left'>
+											{result.voters.map(([email]) => (
+												<div key={email}>
+													<Avatar email={email} />
+												</div>
+											))}
+										</FlipMove>
+									</Grid>
 								</Grid>
-								<Grid item className='planning__flex-full'>
-									<FlipMove className='planning__players --left'>
-										{result.voters.map(([email]) => (
-											<div key={email}>
-												<Avatar email={email} />
-											</div>
-										))}
-									</FlipMove>
-								</Grid>
-							</Grid>
+							</Slide>
 						</Grid>
 					))}
 				</Grid>
@@ -255,12 +263,12 @@ export default function Planning(props: {
 
 	if (currentUserIsScrumMaster) {
 		return (
-			<div className='planning__box'>
+			<Box>
 				{_.isEmpty(data.players)
 					? <span>You are the scrum master. Waiting for other users to join this session.</span>
 					: <PeerProgress players={data.players} grand />}
 				{floatingButtons}
-			</div>
+			</Box>
 		)
 	}
 

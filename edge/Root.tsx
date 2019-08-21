@@ -2,19 +2,23 @@ import * as Firebase from 'firebase/app'
 import * as React from 'react'
 import { RouteComponentProps } from 'react-router-dom'
 import * as _ from 'lodash'
+import CircularProgress from '@material-ui/core/CircularProgress'
 
 import Lobby from './Lobby'
 import Planning from './Planning'
-import Flash from './Flash'
+import Box from './Box'
+
+const authProvider = new Firebase.auth.GoogleAuthProvider()
+authProvider.setCustomParameters({ prompt: 'select_account' })
 
 export default function Root(props: {
 	session: string
 	history: RouteComponentProps['history']
 	database: Firebase.firestore.Firestore
+	showFlashMessage: (message: string) => void
 }) {
 	const session = props.session || window.sessionStorage.getItem('session') || ''
 	const [currentUser, setCurrentUser] = React.useState<Firebase.User>(null)
-	const [message, setMessage] = React.useState<string>(null)
 
 	const getDocument = _.memoize((session: string) => props.database.collection('planning').doc(session))
 
@@ -24,50 +28,43 @@ export default function Root(props: {
 				setCurrentUser(user)
 				props.history.push('/' + session)
 			} else {
+				setCurrentUser(null)
 				props.history.replace('/')
 			}
 		})
 	}, [])
 
-	const flashMessage = (
-		<Flash onClose={() => { setMessage(null) }}>{message}</Flash>
-	)
-
-	if (!props.session) {
+	if (window.location.hash === '#loading') {
 		return (
-			<React.Fragment>
-				<Lobby
-					session={session}
-					onSubmit={session => {
-						session = session.toLowerCase()
-						window.sessionStorage.setItem('session', session)
-
-						const authProvider = new Firebase.auth.GoogleAuthProvider()
-						Firebase.auth().signInWithRedirect(authProvider)
-					}}
-				/>
-				{flashMessage}
-			</React.Fragment>
+			<Box>
+				<CircularProgress color='primary' />
+			</Box>
 		)
 	}
 
-	if (!currentUser) {
-		return null
+	if (!props.session || !currentUser) {
+		return (
+			<Lobby
+				session={session}
+				onSubmit={session => {
+					session = session.toLowerCase()
+					window.sessionStorage.setItem('session', session)
+
+					window.location.hash = '#loading'
+					Firebase.auth().signInWithRedirect(authProvider)
+				}}
+			/>
+		)
 	}
 
 	return (
-		<React.Fragment>
-			<Planning
-				currentUser={currentUser}
-				document={getDocument(props.session.toLowerCase())}
-				navigateToLobby={() => {
-					props.history.replace('/')
-				}}
-				showFlashMessage={message => {
-					setMessage(message)
-				}}
-			/>
-			{flashMessage}
-		</React.Fragment>
+		<Planning
+			currentUser={currentUser}
+			document={getDocument(props.session.toLowerCase())}
+			navigateToLobby={() => {
+				props.history.replace('/')
+			}}
+			showFlashMessage={props.showFlashMessage}
+		/>
 	)
 }
