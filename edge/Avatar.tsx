@@ -17,7 +17,7 @@ export default function Avatar(props: {
 			width: size,
 			height: size,
 			fontSize: Math.ceil(size / 2),
-			opacity: props.faded ? 0.15 : 1,
+			opacity: props.faded ? 0.2 : 1,
 		}}>
 			{props.children ? props.children : getAcronym(props.email)}
 		</div>

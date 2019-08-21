@@ -40,7 +40,7 @@ interface ISession {
 export default function Planning(props: {
 	currentUser: Firebase.User
 	document: Firebase.firestore.DocumentReference
-	onSessionDeleted: () => void
+	navigateToLobby: () => void
 	showFlashMessage: (message: string) => void
 }) {
 	const [data, setData] = React.useState<ISession>()
@@ -52,13 +52,23 @@ export default function Planning(props: {
 		let unmounted = false;
 
 		(async () => {
-			let { exists } = await props.document.get()
-			if (!exists) {
-				const session: ISession = {
-					master: props.currentUser.email,
-					players: {},
+			try {
+				let { exists } = await props.document.get()
+				if (!exists) {
+					const session: ISession = {
+						master: props.currentUser.email,
+						players: {},
+					}
+					await props.document.set(session)
 				}
-				await props.document.set(session)
+			} catch (ex) {
+				if (ex.code === 'permission-denied') {
+					props.showFlashMessage(`Your email ${props.currentUser.email} is denied. Only @taskworld.com emails are allowed to access this service.`)
+				} else {
+					props.showFlashMessage(_.isString(ex) ? ex : ex.message)
+				}
+				props.navigateToLobby()
+				return
 			}
 
 			const session = (await props.document.get()).data() as ISession
@@ -83,8 +93,7 @@ export default function Planning(props: {
 
 				if (!session || session.players[props.currentUser.email] === undefined && session.master !== props.currentUser.email) {
 					props.showFlashMessage('You have been removed from the session')
-
-					props.onSessionDeleted()
+					props.navigateToLobby()
 					return
 				}
 
@@ -97,10 +106,6 @@ export default function Planning(props: {
 			unsubscribe()
 		}
 	}, [])
-
-	if (!props.currentUser) {
-		return <Redirect to='/' />
-	}
 
 	const onSessionReset = () => {
 		props.document.update({
@@ -250,10 +255,12 @@ export default function Planning(props: {
 
 	if (currentUserIsScrumMaster) {
 		return (
-			<React.Fragment>
-				<PeerProgress players={data.players} grand />
+			<div className='planning__box'>
+				{_.isEmpty(data.players)
+					? <span>You are the scrum master. Waiting for other users to join this session.</span>
+					: <PeerProgress players={data.players} grand />}
 				{floatingButtons}
-			</React.Fragment>
+			</div>
 		)
 	}
 

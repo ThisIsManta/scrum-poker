@@ -2,12 +2,10 @@ import * as Firebase from 'firebase/app'
 import * as React from 'react'
 import { RouteComponentProps } from 'react-router-dom'
 import * as _ from 'lodash'
-import Snackbar from '@material-ui/core/Snackbar'
-import Icon from '@material-ui/core/Icon'
-import IconButton from '@material-ui/core/IconButton'
 
 import Lobby from './Lobby'
 import Planning from './Planning'
+import Flash from './Flash'
 
 export default function Root(props: {
 	session: string
@@ -32,23 +30,7 @@ export default function Root(props: {
 	}, [])
 
 	const flashMessage = (
-		<Snackbar
-			message={message}
-			open={!!message}
-			anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-			action={
-				<IconButton
-					key="close"
-					aria-label="close"
-					color="inherit"
-					onClick={() => {
-						setMessage(null)
-					}}
-				>
-					<Icon>close</Icon>
-				</IconButton>
-			}
-		/>
+		<Flash onClose={() => { setMessage(null) }}>{message}</Flash>
 	)
 
 	if (!props.session) {
@@ -78,7 +60,7 @@ export default function Root(props: {
 			<Planning
 				currentUser={currentUser}
 				document={getDocument(props.session.toLowerCase())}
-				onSessionDeleted={() => {
+				navigateToLobby={() => {
 					props.history.replace('/')
 				}}
 				showFlashMessage={message => {
