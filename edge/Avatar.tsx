@@ -2,9 +2,11 @@ import * as _ from 'lodash'
 import * as React from 'react'
 
 import './Avatar.less'
+import { getAcronym } from './getAcronym'
 
 export default function Avatar(props: {
-	children: string
+	email?: string
+	children?: React.ReactNode
 	size?: number
 	faded?: boolean
 }) {
@@ -17,7 +19,7 @@ export default function Avatar(props: {
 			fontSize: Math.ceil(size / 2),
 			opacity: props.faded ? 0.15 : 1,
 		}}>
-			{props.children}
+			{props.children ? props.children : getAcronym(props.email)}
 		</div>
 	)
 }

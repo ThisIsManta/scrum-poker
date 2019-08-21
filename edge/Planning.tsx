@@ -1,4 +1,4 @@
-import { firestore } from 'firebase/app'
+import * as Firebase from 'firebase/app'
 import * as React from 'react'
 import { Redirect } from 'react-router-dom'
 import Container from '@material-ui/core/Container'
@@ -15,6 +15,7 @@ import FlipMove from 'react-flip-move'
 import './Planning.less'
 import Card from './Card'
 import Avatar from './Avatar'
+import { getAcronym } from './getAcronym'
 
 export enum Score {
 	Unvoted = '',
@@ -31,12 +32,12 @@ export enum Score {
 
 interface ISession {
 	master: string
-	players: { [acronym: string]: { firstScore: Score, lastScore: Score, timestamp: string } }
+	players: { [email: string]: { firstScore: Score, lastScore: Score, timestamp: string } }
 }
 
 export default function Planning(props: {
-	acronym: string
-	document: firestore.DocumentReference
+	currentUser: Firebase.User
+	document: Firebase.firestore.DocumentReference
 	onSessionDelete: () => void
 }) {
 	const [data, setData] = React.useState<ISession>()
@@ -51,19 +52,22 @@ export default function Planning(props: {
 			let { exists } = await props.document.get()
 			if (!exists) {
 				const session: ISession = {
-					master: props.acronym,
+					master: props.currentUser.email,
 					players: {},
 				}
 				await props.document.set(session)
 			}
 
 			const session = (await props.document.get()).data() as ISession
-			if (session.master !== props.acronym && session.players[props.acronym] === undefined) {
-				await props.document.update(`players.${props.acronym}`, {
-					firstScore: Score.Unvoted,
-					lastScore: Score.Unvoted,
-					timestamp: new Date().toISOString(),
-				})
+			if (session.master !== props.currentUser.email && session.players[props.currentUser.email] === undefined) {
+				await props.document.update(
+					new Firebase.firestore.FieldPath('players', props.currentUser.email),
+					{
+						firstScore: Score.Unvoted,
+						lastScore: Score.Unvoted,
+						timestamp: new Date().toISOString(),
+					}
+				)
 			}
 
 			if (unmounted) {
@@ -74,7 +78,7 @@ export default function Planning(props: {
 				const session = snapshot.data() as ISession
 				console.log(session)
 
-				if (!session || session.players[props.acronym] === undefined && session.master !== props.acronym) {
+				if (!session || session.players[props.currentUser.email] === undefined && session.master !== props.currentUser.email) {
 					props.onSessionDelete()
 					return
 				}
@@ -89,7 +93,7 @@ export default function Planning(props: {
 		}
 	}, [props.document])
 
-	if (!props.acronym) {
+	if (!props.currentUser) {
 		return <Redirect to='/' />
 	}
 
@@ -107,15 +111,18 @@ export default function Planning(props: {
 		props.document.delete()
 	}
 
-	const onPersonKicked = (name: string) => {
-		props.document.update(`players.${name}`, firestore.FieldValue.delete())
+	const onPersonKicked = (email: string) => {
+		props.document.update(
+			new Firebase.firestore.FieldPath('players', email),
+			Firebase.firestore.FieldValue.delete()
+		)
 	}
 
 	if (!data) {
 		return null
 	}
 
-	const currentUserIsScrumMaster = data.master === props.acronym
+	const currentUserIsScrumMaster = data.master === props.currentUser.email
 
 	const everyoneIsVoted = _.isEmpty(data.players) === false &&
 		_.every(data.players, player => player.lastScore !== Score.Unvoted)
@@ -128,12 +135,12 @@ export default function Planning(props: {
 			<Dialog onClose={() => { setRemovalPersonDialogVisible(false) }} open={personRemovalDialogVisible}>
 				<DialogTitle>Remove a person</DialogTitle>
 				<List>
-					{_.chain(data.players).keys().sortBy().map(name => (
-						<ListItem button key={name} onClick={() => {
-							onPersonKicked(name)
+					{_.chain(data.players).keys().sortBy().map(email => (
+						<ListItem button key={email} onClick={() => {
+							onPersonKicked(email)
 							setRemovalPersonDialogVisible(false)
 						}}>
-							{name}
+							{getAcronym(email)} ({email})
 						</ListItem>
 					)).value()}
 				</List>
@@ -143,7 +150,7 @@ export default function Planning(props: {
 		</div>
 	)
 
-	const myScore = currentUserIsScrumMaster ? Score.Unvoted : data.players[props.acronym].lastScore
+	const myScore = currentUserIsScrumMaster ? Score.Unvoted : data.players[props.currentUser.email].lastScore
 
 	if (everyoneIsVoted) {
 		const sortedScores = _.chain(Score)
@@ -183,11 +190,14 @@ export default function Planning(props: {
 												return
 											}
 
-											props.document.update(`players.${props.acronym}`, {
-												...data.players[props.acronym],
-												lastScore: score,
-												timestamp: new Date().toISOString(),
-											})
+											props.document.update(
+												new Firebase.firestore.FieldPath('players', props.currentUser.email),
+												{
+													...data.players[props.currentUser.email],
+													lastScore: score,
+													timestamp: new Date().toISOString(),
+												}
+											)
 										}}
 									>
 										{result.score}
@@ -195,11 +205,9 @@ export default function Planning(props: {
 								</Grid>
 								<Grid item className='planning__flex-full'>
 									<FlipMove className='planning__players --left'>
-										{result.voters.map(([name]) => (
-											<div key={name}>
-												<Avatar>
-													{name}
-												</Avatar>
+										{result.voters.map(([email]) => (
+											<div key={email}>
+												<Avatar email={email} />
 											</div>
 										))}
 									</FlipMove>
@@ -214,48 +222,62 @@ export default function Planning(props: {
 	}
 
 	if (currentUserIsScrumMaster) {
-		const sortedNamePlayerPairs = _.chain(data.players)
-			.toPairs()
-			.sortBy(
-				([, player]) => player.lastScore === Score.Unvoted ? 1 : 0,
-				([, player]) => player.timestamp
-			)
-			.value()
-
 		return (
 			<React.Fragment>
-				<FlipMove className='planning__players --tall'>
-					{sortedNamePlayerPairs.map(([name, { lastScore: score }]) =>
-						<div key={name}>
-							<Avatar faded={score === Score.Unvoted} size={120}>
-								{name}
-							</Avatar>
-						</div>
-					)}
-				</FlipMove>
+				<PeerProgress players={data.players} grand />
 				{floatingButton}
 			</React.Fragment>
 		)
 	}
 
 	return (
-		<div className='planning__cards'>
-			{Object.values(Score).filter(score => score !== Score.Unvoted).map(score => (
-				<Card
-					key={score}
-					selected={score === myScore}
-					onClick={score => {
-						props.document.update(`players.${props.acronym}`, {
-							...data.players[props.acronym],
-							firstScore: score,
-							lastScore: score,
-							timestamp: new Date().toISOString(),
-						})
-					}}
-				>
-					{score}
-				</Card>
-			))}
-		</div>
+		<React.Fragment>
+			<PeerProgress players={data.players} />
+			<div className='planning__cards'>
+				{Object.values(Score).filter(score => score !== Score.Unvoted).map(score => (
+					<Card
+						key={score}
+						selected={score === myScore}
+						onClick={score => {
+							props.document.update(
+								new Firebase.firestore.FieldPath('players', props.currentUser.email),
+								{
+									...data.players[props.currentUser.email],
+									firstScore: score,
+									lastScore: score,
+									timestamp: new Date().toISOString(),
+								}
+							)
+						}}
+					>
+						{score}
+					</Card>
+				))}
+			</div>
+		</React.Fragment>
+	)
+}
+
+function PeerProgress(props: {
+	players: ISession['players']
+	grand?: boolean
+}) {
+	const sortedPlayers = _.chain(props.players)
+		.toPairs()
+		.map(([email, player]) => ({ ...player, email }))
+		.sortBy(
+			player => player.lastScore === Score.Unvoted ? 1 : 0,
+			player => player.timestamp
+		)
+		.value()
+
+	return (
+		<FlipMove className={_.compact(['planning__players', '--free', props.grand && '--tall']).join(' ')}>
+			{sortedPlayers.map(({ email, lastScore }) =>
+				<div key={email}>
+					<Avatar email={email} faded={lastScore === Score.Unvoted} size={props.grand ? 120 : 36} />
+				</div>
+			)}
+		</FlipMove>
 	)
 }

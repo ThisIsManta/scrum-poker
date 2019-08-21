@@ -8,11 +8,9 @@ import './Lobby.less'
 
 export default function Lobby(props: {
 	session: string
-	acronym: string
-	onSubmit: (session: string, acronym: string) => void
+	onSubmit?: (session: string) => void
 }) {
 	const [session, setSession] = React.useState(props.session)
-	const [acronym, setAcronym] = React.useState(props.acronym)
 
 	return (
 		<div className='lobby'>
@@ -26,22 +24,9 @@ export default function Lobby(props: {
 							fullWidth
 							value={session}
 							onChange={e => {
-								setSession(e.target.value)
+								setSession(e.target.value.toLowerCase())
 							}}
 							autoFocus={session === ''}
-						/>
-					</Grid>
-					<Grid item>
-						<TextField
-							type='text'
-							label='Acronym'
-							variant='outlined'
-							fullWidth
-							value={acronym}
-							onChange={e => {
-								setAcronym(e.target.value)
-							}}
-							inputProps={{ minLength: 2, maxLength: 2 }}
 						/>
 					</Grid>
 					<Grid item className='lobby__button'>
@@ -49,9 +34,9 @@ export default function Lobby(props: {
 							size='large'
 							variant='outlined'
 							onClick={() => {
-								props.onSubmit(session, acronym)
+								props.onSubmit(session)
 							}}
-							disabled={!session.trim() || !acronym.trim()}
+							disabled={!session.trim() || !props.onSubmit}
 						>
 							Join
 						</Button>

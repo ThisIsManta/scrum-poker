@@ -1,4 +1,4 @@
-import { firestore } from 'firebase/app'
+import * as Firebase from 'firebase/app'
 import * as React from 'react'
 import { RouteComponentProps } from 'react-router-dom'
 import * as _ from 'lodash'
@@ -9,34 +9,46 @@ import Planning from './Planning'
 export default function Root(props: {
 	session: string
 	history: RouteComponentProps['history']
-	database: firestore.Firestore
+	database: Firebase.firestore.Firestore
 }) {
-	const session = props.session || window.localStorage.getItem('session') || ''
-	const acronym = window.localStorage.getItem('acronym') || ''
+	const session = props.session || window.sessionStorage.getItem('session') || ''
+	const [currentUser, setCurrentUser] = React.useState<Firebase.User>(null)
 
 	const getDocument = _.memoize((session: string) => props.database.collection('planning').doc(session))
 
-	if (!acronym || !props.session) {
+	React.useEffect(() => {
+		return Firebase.auth().onAuthStateChanged(user => {
+			if (user && user.emailVerified) {
+				setCurrentUser(user)
+				props.history.push('/' + session)
+			} else {
+				props.history.replace('/')
+			}
+		})
+	}, [])
+
+	if (!props.session) {
 		return (
 			<Lobby
 				session={session}
-				acronym={acronym}
-				onSubmit={(session, acronym) => {
+				onSubmit={session => {
 					session = session.toLowerCase()
-					window.localStorage.setItem('session', session)
+					window.sessionStorage.setItem('session', session)
 
-					acronym = acronym.toUpperCase()
-					window.localStorage.setItem('acronym', acronym)
-
-					props.history.push('/' + session)
+					const authProvider = new Firebase.auth.GoogleAuthProvider()
+					Firebase.auth().signInWithRedirect(authProvider)
 				}}
 			/>
 		)
 	}
 
+	if (!currentUser) {
+		return null
+	}
+
 	return (
 		<Planning
-			acronym={acronym}
+			currentUser={currentUser}
 			document={getDocument(props.session.toLowerCase())}
 			onSessionDelete={() => {
 				props.history.replace('/')
