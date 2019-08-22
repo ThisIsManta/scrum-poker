@@ -9,6 +9,12 @@ import Lobby from './Lobby'
 import Planning from './Planning'
 import FlexBox from './FlexBox'
 
+function signIn() {
+	const authProvider = new Firebase.auth.GoogleAuthProvider()
+	authProvider.setCustomParameters({ prompt: 'select_account' })
+	Firebase.auth().signInWithRedirect(authProvider)
+}
+
 export default function Root(props: {
 	session: string
 	history: RouteComponentProps['history']
@@ -52,6 +58,9 @@ export default function Root(props: {
 					props.history.replace('/')
 				})
 
+			} else if (props.session) {
+				signIn()
+
 			} else {
 				setCurrentUser(null)
 				props.history.replace('/')
@@ -70,16 +79,13 @@ export default function Root(props: {
 	if (!props.session || !currentUser) {
 		return (
 			<Lobby
-				session={window.sessionStorage.getItem('session')}
+				session={window.sessionStorage.getItem('session') || ''}
 				onSubmit={session => {
 					session = session.toLowerCase()
 					window.sessionStorage.setItem('session', session)
 
 					props.history.push('/' + session)
-
-					const authProvider = new Firebase.auth.GoogleAuthProvider()
-					authProvider.setCustomParameters({ prompt: 'select_account' })
-					Firebase.auth().signInWithRedirect(authProvider)
+					signIn()
 				}}
 			/>
 		)
