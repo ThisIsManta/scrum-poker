@@ -127,7 +127,7 @@ export default function Planning(props: {
 	const floatingButtons = currentUserIsScrumMaster && (
 		<div className='planning__buttons'>
 			{everyoneIsVoted && (
-				<Fab onClick={onSessionReset}>
+				<Fab color='primary' onClick={onSessionReset}>
 					<Icon>autorenew</Icon>
 				</Fab>
 			)}

@@ -1,4 +1,5 @@
 import * as React from 'react'
+import * as _ from 'lodash'
 import Container from '@material-ui/core/Container'
 import Grid from '@material-ui/core/Grid'
 import TextField from '@material-ui/core/TextField'
@@ -22,10 +23,13 @@ export default function Lobby(props: {
 							type='text'
 							label='Session'
 							variant='outlined'
+							helperText='' // TODO
+							InputLabelProps={{ shrink: true }}
 							fullWidth
 							value={session}
 							onChange={e => {
-								setSession(e.target.value.toLowerCase())
+								const value = e.target.value
+								setSession(_.kebabCase(value) + (/\W$/.test(value) ? '-' : ''))
 							}}
 							onKeyUp={e => {
 								if (e.key === 'Enter' && session) {

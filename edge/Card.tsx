@@ -14,6 +14,7 @@ export default function Card(props: {
 	return (
 		<Button
 			className='card'
+			color='primary'
 			variant={props.selected ? 'contained' : 'outlined'}
 			onClick={props.disabled ? undefined : () => { props.onClick(props.children) }}
 		>

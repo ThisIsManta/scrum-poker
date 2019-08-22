@@ -9,9 +9,6 @@ import Lobby from './Lobby'
 import Planning from './Planning'
 import FlexBox from './FlexBox'
 
-const authProvider = new Firebase.auth.GoogleAuthProvider()
-authProvider.setCustomParameters({ prompt: 'select_account' })
-
 export default function Root(props: {
 	session: string
 	history: RouteComponentProps['history']
@@ -75,6 +72,8 @@ export default function Root(props: {
 					session = session.toLowerCase()
 					window.sessionStorage.setItem('session', session)
 
+					const authProvider = new Firebase.auth.GoogleAuthProvider()
+					authProvider.setCustomParameters({ prompt: 'select_account' })
 					Firebase.auth().signInWithRedirect(authProvider)
 				}}
 			/>
@@ -86,6 +85,8 @@ export default function Root(props: {
 			currentUser={currentUser}
 			document={getDocument(props.session)}
 			onSessionDeleted={() => {
+				window.sessionStorage.setItem('session', '')
+
 				props.history.replace('/')
 			}}
 			showFlashMessage={props.showFlashMessage}
