@@ -14,18 +14,14 @@ render((
 	<MuiThemeProvider theme={createMuiTheme({ palette: { type: 'dark', primary: { main: '#ffffff' } } })}>
 		<BrowserRouter>
 			<Switch>
-				<Route path={['/scrum-poker/:session', '/scrum-poker' /* Do not re-arrange this as "session" might always be an empty string */]} >
-					{({ match, history, location }: RouteComponentProps<{ session: string }>) => (
+				<Route path='/scrum-poker' >
+					{({ history, location }: RouteComponentProps<{ session: string }>) => (
 						<Flash>
 							{showFlashMessage => (
 								<Root
-									session={match && match.params && match.params.session || ''}
+									session={location.search.replace(/^\?/, '')}
 									navigateTo={session => {
-										const newPath = '/scrum-poker/' + _.trim(session, '/')
-										const oldPath = _.trimEnd(location.pathname, '/')
-										if (newPath !== oldPath) {
-											history.push(newPath)
-										}
+										history.push('/scrum-poker' + (session ? '?' + session : ''))
 									}}
 									showFlashMessage={showFlashMessage}
 								/>
