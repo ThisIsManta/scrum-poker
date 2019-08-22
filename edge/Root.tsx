@@ -4,9 +4,10 @@ import { RouteComponentProps } from 'react-router-dom'
 import * as _ from 'lodash'
 import CircularProgress from '@material-ui/core/CircularProgress'
 
+import './Root.less'
 import Lobby from './Lobby'
 import Planning from './Planning'
-import Box from './Box'
+import FlexBox from './FlexBox'
 
 const authProvider = new Firebase.auth.GoogleAuthProvider()
 authProvider.setCustomParameters({ prompt: 'select_account' })
@@ -36,9 +37,9 @@ export default function Root(props: {
 
 	if (window.location.hash === '#loading') {
 		return (
-			<Box>
+			<FlexBox>
 				<CircularProgress color='primary' />
-			</Box>
+			</FlexBox>
 		)
 	}
 

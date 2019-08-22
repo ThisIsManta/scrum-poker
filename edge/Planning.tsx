@@ -17,7 +17,7 @@ import FlipMove from 'react-flip-move'
 import './Planning.less'
 import Card from './Card'
 import Avatar from './Avatar'
-import Box from './Box'
+import FlexBox from './FlexBox'
 import { getAcronym } from './getAcronym'
 
 export enum Score {
@@ -218,7 +218,7 @@ export default function Planning(props: {
 				<Grid container direction='column' spacing={2}>
 					{finalResults.map(result => (
 						<Grid item key={result.score}>
-							<Slide direction='up' in mountOnEnter unmountOnExit>
+							<Slide direction='up' in timeout={900} mountOnEnter unmountOnExit>
 								<Grid container direction='row' spacing={2}>
 									<Grid item>
 										<Card
@@ -263,12 +263,12 @@ export default function Planning(props: {
 
 	if (currentUserIsScrumMaster) {
 		return (
-			<Box>
+			<FlexBox>
 				{_.isEmpty(data.players)
-					? <span>You are the scrum master. Waiting for other users to join this session.</span>
+					? <span className='planning_hint'>You are the scrum master — waiting for other users to join this session.</span>
 					: <PeerProgress players={data.players} grand />}
 				{floatingButtons}
-			</Box>
+			</FlexBox>
 		)
 	}
 

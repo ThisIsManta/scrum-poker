@@ -1,9 +1,9 @@
 .planning__cards {
+	flex: 1;
 	display: flex;
 	flex-flow: wrap;
 	justify-content: center;
 	padding: 8px;
-    min-height: 100vh;
     align-items: center;
 	box-sizing: border-box;
 	align-content: space-evenly;
@@ -28,10 +28,6 @@
 
 	&.--left {
 		justify-content: flex-start;
-	}
-
-	&.--tall {
-		min-height: 100vh;
 	}
 
 	&.--free {
@@ -62,4 +58,10 @@
 	.planning__speed-dial {
 		color: black;
 	}
+}
+
+.planning_hint {
+	user-select: none;
+	font-size: 2em;
+    text-align: center;
 }

@@ -5,6 +5,7 @@ import TextField from '@material-ui/core/TextField'
 import Button from '@material-ui/core/Button'
 
 import './Lobby.less'
+import FlexBox from './FlexBox'
 
 export default function Lobby(props: {
 	session: string
@@ -13,7 +14,7 @@ export default function Lobby(props: {
 	const [session, setSession] = React.useState(props.session)
 
 	return (
-		<div className='lobby'>
+		<FlexBox>
 			<Container maxWidth='sm'>
 				<Grid container direction='column' spacing={2}>
 					<Grid item>
@@ -48,6 +49,6 @@ export default function Lobby(props: {
 					</Grid>
 				</Grid>
 			</Container>
-		</div>
+		</FlexBox>
 	)
 }
