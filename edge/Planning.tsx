@@ -18,6 +18,7 @@ import './Planning.less'
 import Card from './Card'
 import Avatar from './Avatar'
 import FlexBox from './FlexBox'
+import Timer from './Timer'
 import { getAcronym } from './getAcronym'
 
 export enum Score {
@@ -47,6 +48,7 @@ export default function Planning(props: {
 	const [data, setData] = React.useState<ISession>()
 	const [speedDialMenuVisible, setSpeedDialMenuVisible] = React.useState(false)
 	const [personRemovalDialogVisible, setRemovalPersonDialogVisible] = React.useState(false)
+	const [beginning, setBeginning] = React.useState(Date.now())
 
 	React.useEffect(() => {
 		let unsubscribe = _.noop;
@@ -106,6 +108,8 @@ export default function Planning(props: {
 				lastScore: Score.Unvoted,
 			})),
 		})
+
+		setBeginning(Date.now())
 	}
 
 	const onPersonRemoved = (email: string) => {
@@ -177,6 +181,12 @@ export default function Planning(props: {
 		</div>
 	)
 
+	const timer = currentUserIsScrumMaster && _.isEmpty(data.players) === false && (
+		<div className='planning__timer'>
+			<Timer beginning={beginning} />
+		</div>
+	)
+
 	const myScore = currentUserIsScrumMaster ? Score.Unvoted : data.players[props.currentUser.email].lastScore
 
 	if (everyoneIsVoted) {
@@ -203,61 +213,67 @@ export default function Planning(props: {
 			.value()
 
 		return (
-			<Container className='planning__results' maxWidth='sm'>
-				<Slide direction='up' in timeout={900}>
-					<Grid container direction='column' spacing={2}>
-						{finalResults.map(result => (
-							<Grid item key={result.score}>
-								<Grid container direction='row' spacing={2}>
-									<Grid item>
-										<Card
-											selected={result.score === myScore}
-											disabled={currentUserIsScrumMaster}
-											onClick={score => {
-												if (score === myScore) {
-													return
-												}
-
-												props.document.update(
-													new Firebase.firestore.FieldPath('players', props.currentUser.email),
-													{
-														...data.players[props.currentUser.email],
-														lastScore: score,
-														timestamp: new Date().toISOString(),
+			<React.Fragment>
+				{timer}
+				<Container className='planning__results' maxWidth='sm'>
+					<Slide direction='up' in timeout={900}>
+						<Grid container direction='column' spacing={2}>
+							{finalResults.map(result => (
+								<Grid item key={result.score}>
+									<Grid container direction='row' spacing={2}>
+										<Grid item>
+											<Card
+												selected={result.score === myScore}
+												disabled={currentUserIsScrumMaster}
+												onClick={score => {
+													if (score === myScore) {
+														return
 													}
-												)
-											}}
-										>
-											{result.score}
-										</Card>
-									</Grid>
-									<Grid item className='planning__flex-full'>
-										<FlipMove className='planning__players --left'>
-											{result.voters.map(([email]) => (
-												<div key={email}>
-													<Avatar email={email} />
-												</div>
-											))}
-										</FlipMove>
+
+													props.document.update(
+														new Firebase.firestore.FieldPath('players', props.currentUser.email),
+														{
+															...data.players[props.currentUser.email],
+															lastScore: score,
+															timestamp: new Date().toISOString(),
+														}
+													)
+												}}
+											>
+												{result.score}
+											</Card>
+										</Grid>
+										<Grid item className='planning__flex-full'>
+											<FlipMove className='planning__players --left'>
+												{result.voters.map(([email]) => (
+													<div key={email}>
+														<Avatar email={email} />
+													</div>
+												))}
+											</FlipMove>
+										</Grid>
 									</Grid>
 								</Grid>
-							</Grid>
-						))}
-					</Grid>
-				</Slide>
-				{floatingButtons}
-			</Container>
+							))}
+						</Grid>
+					</Slide>
+					{floatingButtons}
+				</Container>
+			</React.Fragment>
 		)
 	}
 
 	if (currentUserIsScrumMaster) {
 		return (
-			<FlexBox>
-				{_.isEmpty(data.players)
-					? <span className='planning_hint'>You are the scrum master — waiting for other users to join this session.</span>
-					: <PeerProgress players={data.players} grand />}
-				{floatingButtons}
-			</FlexBox>
+			<React.Fragment>
+				{timer}
+				<FlexBox>
+					{_.isEmpty(data.players)
+						? <span className='planning_hint'>You are the scrum master — waiting for other users to join this session.</span>
+						: <PeerProgress players={data.players} grand />}
+					{floatingButtons}
+				</FlexBox>
+			</React.Fragment>
 		)
 	}
 

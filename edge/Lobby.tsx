@@ -36,7 +36,7 @@ export default function Lobby(props: {
 									props.onSubmit(session)
 								}
 							}}
-							autoFocus={!session}
+							autoFocus
 						/>
 					</Grid>
 					<Grid item className='lobby__button'>
