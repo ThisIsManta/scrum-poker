@@ -128,9 +128,9 @@ export default function Planning(props: {
 	const everyoneIsVoted = _.isEmpty(data.players) === false &&
 		_.every(data.players, player => player.lastScore !== Score.Unvoted)
 
-	const floatingButtons = currentUserIsScrumMaster && (
+	const floatingButtons = (
 		<div className='planning__buttons'>
-			{everyoneIsVoted && (
+			{currentUserIsScrumMaster && everyoneIsVoted && (
 				<Fab color='primary' onClick={onSessionReset}>
 					<Icon>autorenew</Icon>
 				</Fab>
@@ -144,7 +144,7 @@ export default function Planning(props: {
 					setSpeedDialMenuVisible(value => !value)
 				}}
 			>
-				{_.isEmpty(data.players) === false && <SpeedDialAction
+				{currentUserIsScrumMaster && _.isEmpty(data.players) === false && <SpeedDialAction
 					className='planning__speed-dial'
 					icon={<Icon>remove_circle_outline</Icon>}
 					tooltipTitle='Remove a person'
@@ -154,7 +154,7 @@ export default function Planning(props: {
 						setSpeedDialMenuVisible(false)
 					}}
 				/>}
-				<SpeedDialAction
+				{currentUserIsScrumMaster ? (<SpeedDialAction
 					className='planning__speed-dial'
 					icon={<Icon>delete_forever</Icon>}
 					tooltipTitle='Delete this session'
@@ -162,7 +162,15 @@ export default function Planning(props: {
 					onClick={() => {
 						props.document.delete()
 					}}
-				/>
+				/>) : (<SpeedDialAction
+					className='planning__speed-dial'
+					icon={<Icon>call_missed_outgoing</Icon>}
+					tooltipTitle='Leave this session'
+					tooltipOpen
+					onClick={() => {
+						onPersonRemoved(props.currentUser.email)
+					}}
+				/>)}
 			</SpeedDial>
 
 			<Dialog open={personRemovalDialogVisible} onClose={() => { setRemovalPersonDialogVisible(false) }}>
@@ -257,8 +265,8 @@ export default function Planning(props: {
 							))}
 						</Grid>
 					</Slide>
-					{floatingButtons}
 				</Container>
+				{floatingButtons}
 			</React.Fragment>
 		)
 	}
@@ -269,10 +277,10 @@ export default function Planning(props: {
 				{timer}
 				<FlexBox>
 					{_.isEmpty(data.players)
-						? <span className='planning_hint'>You are the scrum master — waiting for other users to join this session.</span>
+						? <span className='planning_hint'>You are the scrum master — waiting for others to join this session.</span>
 						: <PeerProgress players={data.players} grand />}
-					{floatingButtons}
 				</FlexBox>
+				{floatingButtons}
 			</React.Fragment>
 		)
 	}
@@ -301,6 +309,7 @@ export default function Planning(props: {
 					</Card>
 				))}
 			</div>
+			{floatingButtons}
 		</React.Fragment>
 	)
 }
