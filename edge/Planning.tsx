@@ -13,6 +13,7 @@ import SpeedDialAction from '@material-ui/lab/SpeedDialAction'
 import Slide from '@material-ui/core/Slide'
 import * as _ from 'lodash'
 import FlipMove from 'react-flip-move'
+import * as QRCode from 'qrcode'
 
 import './Planning.less'
 import Card from './Card'
@@ -48,6 +49,7 @@ export default function Planning(props: {
 	const [data, setData] = React.useState<ISession>()
 	const [speedDialMenuVisible, setSpeedDialMenuVisible] = React.useState(false)
 	const [personRemovalDialogVisible, setRemovalPersonDialogVisible] = React.useState(false)
+	const [invitationQRCode, setInvitationQRCode] = React.useState('')
 	const [beginning, setBeginning] = React.useState(Date.now())
 
 	React.useEffect(() => {
@@ -144,6 +146,22 @@ export default function Planning(props: {
 					setSpeedDialMenuVisible(value => !value)
 				}}
 			>
+				{currentUserIsScrumMaster && (<SpeedDialAction
+					className='planning__speed-dial'
+					icon={<Icon>person_add</Icon>}
+					tooltipTitle='Show QRCode'
+					tooltipOpen
+					onClick={() => {
+						QRCode.toDataURL(window.location.href, { width: 600 }, (error, url) => {
+							if (error) {
+								return
+							}
+
+							setInvitationQRCode(url)
+						})
+						setSpeedDialMenuVisible(false)
+					}}
+				/>)}
 				{currentUserIsScrumMaster && _.isEmpty(data.players) === false && <SpeedDialAction
 					className='planning__speed-dial'
 					icon={<Icon>remove_circle_outline</Icon>}
@@ -173,20 +191,24 @@ export default function Planning(props: {
 				/>)}
 			</SpeedDial>
 
-			<Dialog open={personRemovalDialogVisible} onClose={() => { setRemovalPersonDialogVisible(false) }}>
-				<DialogTitle>Remove a person</DialogTitle>
-				<List>
-					{_.chain(data.players).keys().sortBy().map(email => (
-						<ListItem button key={email} onClick={() => {
-							onPersonRemoved(email)
-							setRemovalPersonDialogVisible(false)
-						}}>
-							{getAcronym(email)} ({email})
-						</ListItem>
-					)).value()}
-				</List>
+			<Dialog open={!!invitationQRCode} onClose={() => { setInvitationQRCode(null) }}>
+				<img src={invitationQRCode} style={{ width: '100%', height: '100%' }} />
 			</Dialog>
-		</div>
+
+		<Dialog open={personRemovalDialogVisible} onClose={() => { setRemovalPersonDialogVisible(false) }}>
+			<DialogTitle>Remove a person</DialogTitle>
+			<List>
+				{_.chain(data.players).keys().sortBy().map(email => (
+					<ListItem button key={email} onClick={() => {
+						onPersonRemoved(email)
+						setRemovalPersonDialogVisible(false)
+					}}>
+						{getAcronym(email)} ({email})
+						</ListItem>
+				)).value()}
+			</List>
+		</Dialog>
+		</div >
 	)
 
 	const timer = currentUserIsScrumMaster && _.isEmpty(data.players) === false && (

@@ -38,6 +38,7 @@
 		"@material-ui/lab": "^4.0.0-alpha.23",
 		"firebase": "^6.4.0",
 		"lodash": "^4.17.15",
+		"qrcode": "^1.4.1",
 		"react": "^16.9.0",
 		"react-dom": "^16.9.0",
 		"react-flip-move": "^3.0.3",
