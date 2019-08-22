@@ -19,15 +19,30 @@ export default function Root(props: {
 	showFlashMessage: (message: string) => void
 }) {
 	const session = props.session || window.sessionStorage.getItem('session') || ''
+	const [loading, setLoading] = React.useState(!!session)
 	const [currentUser, setCurrentUser] = React.useState<Firebase.User>(null)
 
-	const getDocument = _.memoize((session: string) => props.database.collection('planning').doc(session))
+	const getDocument = _.memoize((session: string) => props.database.collection('planning').doc(session.toLowerCase()))
 
 	React.useEffect(() => {
+		window.location.hash = '' // Use "loading" state instead
+
 		return Firebase.auth().onAuthStateChanged(user => {
 			if (user && user.emailVerified) {
-				setCurrentUser(user)
-				props.history.push('/' + session)
+				getDocument(session).get().then(() => {
+					setCurrentUser(user)
+					props.history.push('/' + session)
+				}).catch(error => {
+					if (error.code === 'permission-denied') {
+						props.showFlashMessage(`Your email ${user.email} is denied. Only @taskworld.com emails are allowed to access this service.`)
+						Firebase.auth().signOut()
+					} else {
+						props.showFlashMessage(_.isString(error) ? error : error.message)
+					}
+				}).finally(() => {
+					setLoading(false)
+				})
+
 			} else {
 				setCurrentUser(null)
 				props.history.replace('/')
@@ -35,7 +50,7 @@ export default function Root(props: {
 		})
 	}, [])
 
-	if (window.location.hash === '#loading') {
+	if (loading) {
 		return (
 			<FlexBox>
 				<CircularProgress color='primary' />
@@ -51,7 +66,6 @@ export default function Root(props: {
 					session = session.toLowerCase()
 					window.sessionStorage.setItem('session', session)
 
-					window.location.hash = '#loading'
 					Firebase.auth().signInWithRedirect(authProvider)
 				}}
 			/>
@@ -61,8 +75,8 @@ export default function Root(props: {
 	return (
 		<Planning
 			currentUser={currentUser}
-			document={getDocument(props.session.toLowerCase())}
-			navigateToLobby={() => {
+			document={getDocument(props.session)}
+			onSessionDeleted={() => {
 				props.history.replace('/')
 			}}
 			showFlashMessage={props.showFlashMessage}

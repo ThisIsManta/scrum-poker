@@ -41,7 +41,7 @@ interface ISession {
 export default function Planning(props: {
 	currentUser: Firebase.User
 	document: Firebase.firestore.DocumentReference
-	navigateToLobby: () => void
+	onSessionDeleted: () => void
 	showFlashMessage: (message: string) => void
 }) {
 	const [data, setData] = React.useState<ISession>()
@@ -53,24 +53,13 @@ export default function Planning(props: {
 		let unmounted = false;
 
 		(async () => {
-			try {
-				let { exists } = await props.document.get()
-				if (!exists) {
-					const session: ISession = {
-						master: props.currentUser.email,
-						players: {},
-					}
-					await props.document.set(session)
+			let { exists } = await props.document.get()
+			if (!exists) {
+				const session: ISession = {
+					master: props.currentUser.email,
+					players: {},
 				}
-			} catch (ex) {
-				if (ex.code === 'permission-denied') {
-					props.showFlashMessage(`Your email ${props.currentUser.email} is denied. Only @taskworld.com emails are allowed to access this service.`)
-					Firebase.auth().signOut()
-				} else {
-					props.showFlashMessage(_.isString(ex) ? ex : ex.message)
-					props.navigateToLobby()
-				}
-				return
+				await props.document.set(session)
 			}
 
 			const session = (await props.document.get()).data() as ISession
@@ -95,7 +84,7 @@ export default function Planning(props: {
 
 				if (!session || session.players[props.currentUser.email] === undefined && session.master !== props.currentUser.email) {
 					props.showFlashMessage('You have been removed from the session')
-					props.navigateToLobby()
+					props.onSessionDeleted()
 					return
 				}
 
