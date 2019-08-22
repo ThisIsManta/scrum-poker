@@ -17,7 +17,7 @@ function signIn() {
 
 export default function Root(props: {
 	session: string
-	history: RouteComponentProps['history']
+	navigateTo: (session: string) => void
 	showFlashMessage: (message: string) => void
 }) {
 	const [loading, setLoading] = React.useState(true)
@@ -26,8 +26,6 @@ export default function Root(props: {
 	const getDocument = _.memoize((session: string) => Firebase.firestore().collection('planning').doc(session.toLowerCase()))
 
 	React.useEffect(() => {
-		window.location.hash = '' // Use "loading" state instead
-
 		Firebase.initializeApp({
 			apiKey: "AIzaSyBpIZCRRZC-FpsnilNZRCsUTbyw2eLc1xY",
 			authDomain: "scrum-poker-3108b.firebaseapp.com",
@@ -54,7 +52,7 @@ export default function Root(props: {
 					} else {
 						props.showFlashMessage(_.isString(error) ? error : error.message)
 					}
-					props.history.replace('/')
+					props.navigateTo('')
 				}).finally(() => {
 					setLoading(false)
 				})
@@ -64,7 +62,7 @@ export default function Root(props: {
 
 			} else {
 				setCurrentUser(null)
-				props.history.replace('/')
+				props.navigateTo('')
 			}
 		})
 	}, [])
@@ -85,7 +83,7 @@ export default function Root(props: {
 					session = session.toLowerCase()
 					window.sessionStorage.setItem('session', session)
 
-					props.history.push('/' + session)
+					props.navigateTo(session)
 					signIn()
 				}}
 			/>
@@ -97,7 +95,7 @@ export default function Root(props: {
 			currentUser={currentUser}
 			document={getDocument(props.session)}
 			onSessionDeleted={() => {
-				props.history.replace('/')
+				props.navigateTo('')
 			}}
 			showFlashMessage={props.showFlashMessage}
 		/>
