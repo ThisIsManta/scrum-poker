@@ -5,7 +5,9 @@
 	"main": "index.js",
 	"scripts": {
 		"start": "parcel ./edge/index.html",
-		"build": "rm docs/*.js docs/*.css docs/*.map && parcel build ./edge/index.html --out-dir docs --public-url scrum-poker"
+		"build": "rm docs/*.js docs/*.css docs/*.map && parcel build ./edge/index.html --out-dir docs --public-url scrum-poker",
+		"preversion": "npm build && git add docs/* && git commit -m \"Build\" && git push --dry-run --tags origin",
+		"postversion": "git push --tags origin"
 	},
 	"repository": {
 		"type": "git",
