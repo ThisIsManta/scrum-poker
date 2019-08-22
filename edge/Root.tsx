@@ -15,17 +15,26 @@ authProvider.setCustomParameters({ prompt: 'select_account' })
 export default function Root(props: {
 	session: string
 	history: RouteComponentProps['history']
-	database: Firebase.firestore.Firestore
 	showFlashMessage: (message: string) => void
 }) {
 	const session = props.session || window.sessionStorage.getItem('session') || ''
 	const [loading, setLoading] = React.useState(!!session)
 	const [currentUser, setCurrentUser] = React.useState<Firebase.User>(null)
 
-	const getDocument = _.memoize((session: string) => props.database.collection('planning').doc(session.toLowerCase()))
+	const getDocument = _.memoize((session: string) => Firebase.firestore().collection('planning').doc(session.toLowerCase()))
 
 	React.useEffect(() => {
 		window.location.hash = '' // Use "loading" state instead
+
+		Firebase.initializeApp({
+			apiKey: "AIzaSyBpIZCRRZC-FpsnilNZRCsUTbyw2eLc1xY",
+			authDomain: "scrum-poker-3108b.firebaseapp.com",
+			databaseURL: "https://scrum-poker-3108b.firebaseio.com",
+			projectId: "scrum-poker-3108b",
+			storageBucket: "scrum-poker-3108b.appspot.com",
+			messagingSenderId: "657180291314",
+			appId: "1:657180291314:web:d521e4de69812513"
+		})
 
 		return Firebase.auth().onAuthStateChanged(user => {
 			if (user && user.emailVerified) {
