@@ -19,6 +19,12 @@ export default function Lobby(props: {
 			<Container maxWidth='sm'>
 				<Grid container direction='column' spacing={2}>
 					<Grid item>
+						<div className='lobby__title'>
+							{'Scrum Poker'.split('')
+								.map((char, rank) => char === ' ' ? ' ' : <span key={rank}>{char}</span>)}
+						</div>
+					</Grid>
+					<Grid item>
 						<TextField
 							type='text'
 							label='Session'

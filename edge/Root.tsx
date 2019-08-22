@@ -46,7 +46,6 @@ export default function Root(props: {
 		return Firebase.auth().onAuthStateChanged(user => {
 			if (user && user.emailVerified) {
 				getDocument(props.session).get().then(() => {
-					setLoading(false)
 					setCurrentUser(user)
 				}).catch(error => {
 					if (error.code === 'permission-denied') {
@@ -56,6 +55,8 @@ export default function Root(props: {
 						props.showFlashMessage(_.isString(error) ? error : error.message)
 					}
 					props.history.replace('/')
+				}).finally(() => {
+					setLoading(false)
 				})
 
 			} else if (props.session) {
