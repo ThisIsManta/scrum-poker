@@ -215,10 +215,10 @@ export default function Planning(props: {
 
 		return (
 			<Container className='planning__results' maxWidth='sm'>
-				<Grid container direction='column' spacing={2}>
-					{finalResults.map(result => (
-						<Grid item key={result.score}>
-							<Slide direction='up' in timeout={900} mountOnEnter unmountOnExit>
+				<Slide direction='up' in timeout={900}>
+					<Grid container direction='column' spacing={2}>
+						{finalResults.map(result => (
+							<Grid item key={result.score}>
 								<Grid container direction='row' spacing={2}>
 									<Grid item>
 										<Card
@@ -252,10 +252,10 @@ export default function Planning(props: {
 										</FlipMove>
 									</Grid>
 								</Grid>
-							</Slide>
-						</Grid>
-					))}
-				</Grid>
+							</Grid>
+						))}
+					</Grid>
+				</Slide>
 				{floatingButtons}
 			</Container>
 		)
