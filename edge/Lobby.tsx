@@ -29,7 +29,7 @@ export default function Lobby(props: {
 							type='text'
 							label='Session'
 							variant='outlined'
-							helperText='' // TODO
+							helperText='Create a new session and become a scrum master or join an existing one by its name. Share the session name to your colleagues.'
 							InputLabelProps={{ shrink: true }}
 							fullWidth
 							value={session}
