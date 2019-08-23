@@ -154,6 +154,7 @@ export default function Planning(props: {
 					onClick={() => {
 						QRCode.toDataURL(window.location.href, { width: 600 }, (error, url) => {
 							if (error) {
+								window.alert(_.isString(error) ? error : String(error))
 								return
 							}
 
