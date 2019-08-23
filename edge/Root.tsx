@@ -48,7 +48,6 @@ export default function Root(props: {
 				}).catch(error => {
 					if (error.code === 'permission-denied') {
 						props.showFlashMessage(`Your email ${user.email} is denied. Only @taskworld.com emails are allowed to access this service.`)
-						Firebase.auth().signOut()
 					} else {
 						props.showFlashMessage(_.isString(error) ? error : error.message)
 					}
