@@ -58,7 +58,8 @@ export default function Planning(props: {
 	const [data, setData] = React.useState<ISession>()
 	const [speedDialMenuVisible, setSpeedDialMenuVisible] = React.useState(false)
 	const [personRemovalDialogVisible, setRemovalPersonDialogVisible] = React.useState(false)
-	const [scoreSelectionVisible, setScoreSelectionVisible] = React.useState(false)
+	const [scrumMasterTransferDialogVisible, setScrumMasterTransferDialogVisible] = React.useState(false)
+	const [scoreSelectionDialogVisible, setScoreSelectionDialogVisible] = React.useState(false)
 	const [invitationQRCode, setInvitationQRCode] = React.useState('')
 	const [beginning, setBeginning] = React.useState(Date.now())
 
@@ -138,6 +139,8 @@ export default function Planning(props: {
 	const everyoneIsVoted = _.isEmpty(data.players) === false &&
 		_.every(data.players, player => player.lastScore !== Score.Unvoted)
 
+	const otherPlayerEmails = _.chain(data.players).keys().without(props.currentUser.email).sortBy().value()
+
 	const floatingButtons = (
 		<div className='planning__buttons'>
 			{currentUserIsScrumMaster && everyoneIsVoted && (
@@ -190,14 +193,24 @@ export default function Planning(props: {
 					tooltipTitle='Edit scores'
 					tooltipOpen
 					onClick={() => {
-						setScoreSelectionVisible(true)
+						setScoreSelectionDialogVisible(true)
 						setSpeedDialMenuVisible(false)
 					}}
 				/>}
-				{currentUserIsScrumMaster && _.isEmpty(data.players) === false && <SpeedDialAction
+				{currentUserIsScrumMaster && otherPlayerEmails.length > 0 && <SpeedDialAction
 					className='planning__speed-dial'
 					icon={<Icon>remove_circle_outline</Icon>}
 					tooltipTitle='Remove a person'
+					tooltipOpen
+					onClick={() => {
+						setRemovalPersonDialogVisible(true)
+						setSpeedDialMenuVisible(false)
+					}}
+				/>}
+				{currentUserIsScrumMaster && otherPlayerEmails.length > 0 && <SpeedDialAction
+					className='planning__speed-dial'
+					icon={<Icon>eject</Icon>}
+					tooltipTitle='Transfer scrum master role'
 					tooltipOpen
 					onClick={() => {
 						setRemovalPersonDialogVisible(true)
@@ -230,18 +243,40 @@ export default function Planning(props: {
 			<Dialog open={personRemovalDialogVisible} onClose={() => { setRemovalPersonDialogVisible(false) }}>
 				<DialogTitle>Remove a person</DialogTitle>
 				<List>
-					{_.chain(data.players).keys().sortBy().map(email => (
+					{otherPlayerEmails.map(email => (
 						<ListItem button key={email} onClick={() => {
 							onPersonRemoved(email)
 							setRemovalPersonDialogVisible(false)
 						}}>
 							{getAcronym(email)} ({email})
 						</ListItem>
-					)).value()}
+					))}
 				</List>
 			</Dialog>
 
-			<Dialog open={scoreSelectionVisible} onClose={() => { setScoreSelectionVisible(false) }}>
+			<Dialog open={scrumMasterTransferDialogVisible} onClose={() => { setScrumMasterTransferDialogVisible(false) }}>
+				<DialogTitle>Transfer scrum master role</DialogTitle>
+				<List>
+					{otherPlayerEmails.map(email => (
+						<ListItem button key={email} onClick={() => {
+							props.document.update({
+								master: email,
+							})
+							if (!currentUserCanVote) {
+								props.document.update(
+									new Firebase.firestore.FieldPath('players', props.currentUser.email),
+									basisPlayerScore,
+								)
+							}
+							setScrumMasterTransferDialogVisible(false)
+						}}>
+							{getAcronym(email)} ({email})
+						</ListItem>
+					))}
+				</List>
+			</Dialog>
+
+			<Dialog open={scoreSelectionDialogVisible} onClose={() => { setScoreSelectionDialogVisible(false) }}>
 				<DialogTitle>Edit scores</DialogTitle>
 				<List>
 					{Object.values(Score).filter(score => score !== Score.Unvoted).map(score => (
