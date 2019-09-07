@@ -40,6 +40,12 @@ interface ISession {
 	players: { [email: string]: { firstScore: Score, lastScore: Score, timestamp: string } }
 }
 
+const basisPlayerScore = {
+	firstScore: Score.Unvoted,
+	lastScore: Score.Unvoted,
+	timestamp: new Date().toISOString(),
+}
+
 export default function Planning(props: {
 	currentUser: Firebase.User
 	document: Firebase.firestore.DocumentReference
@@ -70,11 +76,7 @@ export default function Planning(props: {
 			if (session.master !== props.currentUser.email && session.players[props.currentUser.email] === undefined) {
 				await props.document.update(
 					new Firebase.firestore.FieldPath('players', props.currentUser.email),
-					{
-						firstScore: Score.Unvoted,
-						lastScore: Score.Unvoted,
-						timestamp: new Date().toISOString(),
-					}
+					basisPlayerScore
 				)
 			}
 
@@ -126,6 +128,7 @@ export default function Planning(props: {
 	}
 
 	const currentUserIsScrumMaster = data.master === props.currentUser.email
+	const scrumMasterIsVoting = !!data.players[data.master]
 
 	const everyoneIsVoted = _.isEmpty(data.players) === false &&
 		_.every(data.players, player => player.lastScore !== Score.Unvoted)
@@ -163,6 +166,19 @@ export default function Planning(props: {
 						setSpeedDialMenuVisible(false)
 					}}
 				/>)}
+				{currentUserIsScrumMaster && <SpeedDialAction
+					className='planning__speed-dial'
+					icon={<Icon>{scrumMasterIsVoting ? 'indeterminate_check_box' : 'check_box'}</Icon>}
+					tooltipTitle={scrumMasterIsVoting ? 'Leave the voting' : 'Join the voting'}
+					tooltipOpen
+					onClick={() => {
+						props.document.update(
+							new Firebase.firestore.FieldPath('players', data.master),
+							scrumMasterIsVoting ? Firebase.firestore.FieldValue.delete() : basisPlayerScore,
+						)
+						setSpeedDialMenuVisible(false)
+					}}
+				/>}
 				{currentUserIsScrumMaster && _.isEmpty(data.players) === false && <SpeedDialAction
 					className='planning__speed-dial'
 					icon={<Icon>remove_circle_outline</Icon>}
@@ -196,19 +212,19 @@ export default function Planning(props: {
 				<img src={invitationQRCode} style={{ width: '100%', height: '100%' }} />
 			</Dialog>
 
-		<Dialog open={personRemovalDialogVisible} onClose={() => { setRemovalPersonDialogVisible(false) }}>
-			<DialogTitle>Remove a person</DialogTitle>
-			<List>
-				{_.chain(data.players).keys().sortBy().map(email => (
-					<ListItem button key={email} onClick={() => {
-						onPersonRemoved(email)
-						setRemovalPersonDialogVisible(false)
-					}}>
-						{getAcronym(email)} ({email})
+			<Dialog open={personRemovalDialogVisible} onClose={() => { setRemovalPersonDialogVisible(false) }}>
+				<DialogTitle>Remove a person</DialogTitle>
+				<List>
+					{_.chain(data.players).keys().sortBy().map(email => (
+						<ListItem button key={email} onClick={() => {
+							onPersonRemoved(email)
+							setRemovalPersonDialogVisible(false)
+						}}>
+							{getAcronym(email)} ({email})
 						</ListItem>
-				)).value()}
-			</List>
-		</Dialog>
+					)).value()}
+				</List>
+			</Dialog>
 		</div >
 	)
 
@@ -294,7 +310,7 @@ export default function Planning(props: {
 		)
 	}
 
-	if (currentUserIsScrumMaster) {
+	if (currentUserIsScrumMaster && !scrumMasterIsVoting) {
 		return (
 			<React.Fragment>
 				{timer}
