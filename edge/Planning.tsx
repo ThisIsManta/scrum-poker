@@ -8,6 +8,7 @@ import Dialog from '@material-ui/core/Dialog'
 import DialogTitle from '@material-ui/core/DialogTitle'
 import List from '@material-ui/core/List'
 import ListItem from '@material-ui/core/ListItem'
+import Checkbox from '@material-ui/core/Checkbox'
 import SpeedDial from '@material-ui/lab/SpeedDial'
 import SpeedDialAction from '@material-ui/lab/SpeedDialAction'
 import Slide from '@material-ui/core/Slide'
@@ -31,6 +32,7 @@ export enum Score {
 	P5 = '5',
 	P8 = '8',
 	P13 = '13',
+	P21 = '21',
 	Infinity = '∞',
 	NonDeterminable = '?',
 }
@@ -38,6 +40,7 @@ export enum Score {
 interface ISession {
 	master: string
 	players: { [email: string]: { firstScore: Score, lastScore: Score, timestamp: string } }
+	scores: Score[]
 }
 
 const basisPlayerScore = {
@@ -55,6 +58,7 @@ export default function Planning(props: {
 	const [data, setData] = React.useState<ISession>()
 	const [speedDialMenuVisible, setSpeedDialMenuVisible] = React.useState(false)
 	const [personRemovalDialogVisible, setRemovalPersonDialogVisible] = React.useState(false)
+	const [scoreSelectionVisible, setScoreSelectionVisible] = React.useState(false)
 	const [invitationQRCode, setInvitationQRCode] = React.useState('')
 	const [beginning, setBeginning] = React.useState(Date.now())
 
@@ -68,6 +72,7 @@ export default function Planning(props: {
 				const session: ISession = {
 					master: props.currentUser.email,
 					players: {},
+					scores: Object.values(Score).filter(score => score !== Score.Unvoted),
 				}
 				await props.document.set(session)
 			}
@@ -128,7 +133,7 @@ export default function Planning(props: {
 	}
 
 	const currentUserIsScrumMaster = data.master === props.currentUser.email
-	const scrumMasterIsVoting = !!data.players[data.master]
+	const currentUserCanVote = !!data.players[props.currentUser.email]
 
 	const everyoneIsVoted = _.isEmpty(data.players) === false &&
 		_.every(data.players, player => player.lastScore !== Score.Unvoted)
@@ -168,14 +173,24 @@ export default function Planning(props: {
 				/>)}
 				{currentUserIsScrumMaster && <SpeedDialAction
 					className='planning__speed-dial'
-					icon={<Icon>{scrumMasterIsVoting ? 'indeterminate_check_box' : 'check_box'}</Icon>}
-					tooltipTitle={scrumMasterIsVoting ? 'Leave the voting' : 'Join the voting'}
+					icon={<Icon>{currentUserCanVote ? 'indeterminate_check_box' : 'check_box'}</Icon>}
+					tooltipTitle={currentUserCanVote ? 'Leave the voting' : 'Join the voting'}
 					tooltipOpen
 					onClick={() => {
 						props.document.update(
 							new Firebase.firestore.FieldPath('players', data.master),
-							scrumMasterIsVoting ? Firebase.firestore.FieldValue.delete() : basisPlayerScore,
+							currentUserCanVote ? Firebase.firestore.FieldValue.delete() : basisPlayerScore,
 						)
+						setSpeedDialMenuVisible(false)
+					}}
+				/>}
+				{currentUserIsScrumMaster && <SpeedDialAction
+					className='planning__speed-dial'
+					icon={<Icon>amp_stories</Icon>}
+					tooltipTitle='Edit scores'
+					tooltipOpen
+					onClick={() => {
+						setScoreSelectionVisible(true)
 						setSpeedDialMenuVisible(false)
 					}}
 				/>}
@@ -225,6 +240,43 @@ export default function Planning(props: {
 					)).value()}
 				</List>
 			</Dialog>
+
+			<Dialog open={scoreSelectionVisible} onClose={() => { setScoreSelectionVisible(false) }}>
+				<DialogTitle>Edit scores</DialogTitle>
+				<List>
+					{Object.values(Score).filter(score => score !== Score.Unvoted).map(score => (
+						<ListItem button key={score} onClick={() => {
+							if (data.scores.includes(score)) {
+								props.document.update(
+									new Firebase.firestore.FieldPath('scores'),
+									Firebase.firestore.FieldValue.arrayRemove(score),
+									..._.chain(data.players)
+										.toPairs()
+										.filter(([email, player]) => player.firstScore === score || player.lastScore === score)
+										.map(([email, player]) => [
+											new Firebase.firestore.FieldPath('players', email),
+											{
+												...player,
+												firstScore: Score.Unvoted,
+												lastScore: Score.Unvoted,
+												timestamp: new Date().toISOString()
+											}
+										])
+										.flatten()
+										.value()
+								)
+							} else {
+								props.document.update({
+									scores: Object.values(Score).filter(σ => σ !== Score.Unvoted).filter(σ => data.scores.includes(σ) || σ === score)
+								})
+							}
+						}}>
+							<Checkbox checked={data.scores.includes(score)} />
+							{score}
+						</ListItem>
+					))}
+				</List>
+			</Dialog>
 		</div >
 	)
 
@@ -234,12 +286,10 @@ export default function Planning(props: {
 		</div>
 	)
 
-	const myScore = currentUserIsScrumMaster ? Score.Unvoted : data.players[props.currentUser.email].lastScore
+	const myScore = currentUserCanVote ? data.players[props.currentUser.email].lastScore : Score.Unvoted
 
 	if (everyoneIsVoted) {
-		const sortedScores = _.chain(Score)
-			.values()
-			.without(Score.Unvoted)
+		const sortedScores = _.chain(data.scores)
 			.map(score => ({
 				score,
 				count: _.chain(data.players).filter(player => player.firstScore === score).value().length,
@@ -270,8 +320,8 @@ export default function Planning(props: {
 									<Grid container direction='row' spacing={2}>
 										<Grid item>
 											<Card
-												selected={result.score === myScore}
-												disabled={currentUserIsScrumMaster}
+												selected={currentUserCanVote ? result.score === myScore : false}
+												disabled={!currentUserCanVote}
 												onClick={score => {
 													if (score === myScore) {
 														return
@@ -310,7 +360,7 @@ export default function Planning(props: {
 		)
 	}
 
-	if (currentUserIsScrumMaster && !scrumMasterIsVoting) {
+	if (currentUserIsScrumMaster && !currentUserCanVote) {
 		return (
 			<React.Fragment>
 				{timer}
@@ -328,7 +378,7 @@ export default function Planning(props: {
 		<React.Fragment>
 			<PeerProgress players={data.players} />
 			<div className='planning__cards'>
-				{Object.values(Score).filter(score => score !== Score.Unvoted).map(score => (
+				{data.scores.map(score => (
 					<Card
 						key={score}
 						selected={score === myScore}
