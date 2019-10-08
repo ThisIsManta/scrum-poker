@@ -92,7 +92,6 @@ export default function Planning(props: {
 
 			unsubscribe = props.document.onSnapshot(snapshot => {
 				const session = snapshot.data() as ISession
-				console.log(session)
 
 				if (!session || session.players[props.currentUser.email] === undefined && session.master !== props.currentUser.email) {
 					props.showFlashMessage('You have been removed from the session')
