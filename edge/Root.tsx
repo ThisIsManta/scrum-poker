@@ -47,7 +47,7 @@ export default function Root(props: {
 					setCurrentUser(user)
 				}).catch(error => {
 					if (error.code === 'permission-denied') {
-						props.showFlashMessage(`Your email ${user.email} is denied. Only @taskworld.com emails are allowed to access this service.`)
+						props.showFlashMessage('Access denied.')
 					} else {
 						props.showFlashMessage(_.isString(error) ? error : error.message)
 					}
