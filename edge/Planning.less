@@ -1,77 +1,82 @@
 .planning__cards {
-	flex: 1;
-	display: flex;
-	flex-flow: wrap;
-	justify-content: center;
-	padding: 8px;
-    align-items: center;
-	box-sizing: border-box;
-	align-content: space-evenly;
+  flex: 1;
+  display: flex;
+  flex-flow: wrap;
+  justify-content: center;
+  padding: 8px;
+  align-items: center;
+  box-sizing: border-box;
+  align-content: space-evenly;
 
-	> * {
-		margin: 8px !important;
-	}
+  > * {
+    margin: 8px !important;
+  }
 }
 
 .planning__flex-full {
-	display: flex;
-	flex: 1;
+  display: flex;
+  flex: 1;
 }
 
 .planning__players {
-	display: flex;
-	flex-flow: wrap;
-	align-content: center;
-	justify-content: center;
-	box-sizing: border-box;
-	margin: -4px;
+  display: flex;
+  flex-flow: wrap;
+  align-content: center;
+  justify-content: center;
+  box-sizing: border-box;
+  margin: -4px;
 
-	&.--left {
-		justify-content: flex-start;
-	}
+  &.--left {
+    justify-content: flex-start;
+  }
 
-	&.--free {
-		margin: 4px 16px;
-	}
+  &.--free {
+    margin: 4px 16px;
+  }
 
-	> * {
-		margin: 4px;
-	}
+  > * {
+    margin: 4px;
+  }
 }
 
 .planning__results {
-	margin: 24px 0;
+  margin: 24px 0;
 }
 
 .planning__buttons {
-	position: fixed;
-	bottom: 16px;
-	right: 16px;
-	display: flex;
-	justify-content: flex-end;
-	align-items: flex-end;
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
 
-	> * {
-		margin-left: 16px !important;
-	}
+  > * {
+    margin-left: 16px !important;
+  }
 
-	.planning__speed-dial {
-		color: black;
-	}
+  .planning__speed-dial {
+    color: black;
+  }
 }
 
 .planning_hint {
-	user-select: none;
-	font-size: 2em;
-    text-align: center;
+  user-select: none;
+  font-size: 2em;
+  text-align: center;
 }
 
 .planning__timer {
-	font-size: 2em;
-	font-weight: 100;
-	line-height: 1;
-	align-self: flex-end;
-	margin: 10px 12px;
-	opacity: 0.6;
-	user-select: none;
+  font-size: 2em;
+  font-weight: 100;
+  line-height: 1;
+  align-self: flex-end;
+  margin: 10px 12px;
+  opacity: 0.6;
+  user-select: none;
+}
+
+.MuiSpeedDialAction-tooltipPlacementLeft
+  .MuiSpeedDialAction-staticTooltipLabel {
+  white-space: nowrap;
 }
