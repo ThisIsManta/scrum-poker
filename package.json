@@ -4,7 +4,7 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
-		"start": "parcel ./edge/index.html",
+		"start": "parcel ./edge/index.html --open",
 		"build": "rm docs/*.js docs/*.css docs/*.map && parcel build ./edge/index.html --out-dir docs --public-url ./",
 		"preversion": "npm run build && git add docs/* && git commit -m \"Build\" && git push --dry-run origin master:master",
 		"postversion": "git push --tags origin master:master"

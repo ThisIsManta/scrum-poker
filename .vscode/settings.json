@@ -4,6 +4,7 @@
 		"dist": true
 	},
 	"search.exclude": {
+		"package-lock.json": true,
 		"docs": true
 	},
 	"cSpell.words": [
