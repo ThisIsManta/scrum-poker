@@ -3,10 +3,12 @@ import * as _ from 'lodash'
 const emailToAcronymMap = {
 	'anantachai.s@taskworld.com': 'MT',
 	'chaiyapon.o@taskworld.com': 'NS',
+	'jacek.w@taskworld.com': 'JC',
 	'kunanan.t@taskworld.com': 'OL',
 	'sawit.r@taskworld.com': 'GR',
+	'shenaz.s@taskworld.com': 'SN',
 	'totsawat.m@taskworld.com': 'MX',
-	'thanarat.j@taskworld.com': 'AN',
+	'manish.k@taskworld.com': 'MN',
 	'marek@taskworld.com': 'MR',
 	'phakamas.j@taskworld.com': 'JN',
 }
