@@ -25,23 +25,23 @@
 	},
 	"homepage": "https://github.com/ThisIsManta/scrum-poker#readme",
 	"devDependencies": {
-		"@types/lodash": "^4.14.137",
-		"@types/react": "^16.9.2",
-		"@types/react-dom": "^16.8.5",
-		"@types/react-router-dom": "^4.3.4",
-		"less": "^3.10.1",
-		"parcel-bundler": "^1.12.3",
-		"typescript": "^3.5.3"
+		"@types/lodash": "^4.14.160",
+		"@types/react": "^16.9.47",
+		"@types/react-dom": "^16.9.8",
+		"@types/react-router-dom": "^5.1.5",
+		"less": "^3.12.2",
+		"parcel-bundler": "^1.12.4",
+		"typescript": "^4.0.2"
 	},
 	"dependencies": {
-		"@material-ui/core": "^4.3.2",
-		"@material-ui/lab": "^4.0.0-alpha.23",
-		"firebase": "^6.4.0",
-		"lodash": "^4.17.15",
-		"qrcode": "^1.4.1",
-		"react": "^16.9.0",
-		"react-dom": "^16.9.0",
-		"react-flip-move": "^3.0.3",
-		"react-router-dom": "^5.0.1"
+		"@material-ui/core": "^4.11.0",
+		"@material-ui/lab": "^4.0.0-alpha.56",
+		"firebase": "^7.19.0",
+		"lodash": "^4.17.20",
+		"qrcode": "^1.4.4",
+		"react": "^16.13.1",
+		"react-dom": "^16.13.1",
+		"react-flip-move": "^3.0.4",
+		"react-router-dom": "^5.2.0"
 	}
 }

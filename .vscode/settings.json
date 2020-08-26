@@ -1,7 +1,9 @@
 {
 	"files.exclude": {
 		"**/.cache": true,
-		"dist": true,
+		"dist": true
+	},
+	"search.exclude": {
 		"docs": true
 	},
 	"cSpell.words": [
