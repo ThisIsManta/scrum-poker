@@ -4,11 +4,14 @@ import Container from '@material-ui/core/Container'
 import Grid from '@material-ui/core/Grid'
 import Fab from '@material-ui/core/Fab'
 import Icon from '@material-ui/core/Icon'
+import IconButton from '@material-ui/core/IconButton'
 import Dialog from '@material-ui/core/Dialog'
 import DialogTitle from '@material-ui/core/DialogTitle'
 import List from '@material-ui/core/List'
 import ListItem from '@material-ui/core/ListItem'
-import Checkbox from '@material-ui/core/Checkbox'
+import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
+import TextField from '@material-ui/core/TextField'
+import Input from '@material-ui/core/Input'
 import SpeedDial from '@material-ui/lab/SpeedDial'
 import SpeedDialAction from '@material-ui/lab/SpeedDialAction'
 import Slide from '@material-ui/core/Slide'
@@ -23,8 +26,7 @@ import FlexBox from './FlexBox'
 import Timer from './Timer'
 import { getAcronym } from './getAcronym'
 
-export enum Score {
-	Unvoted = '',
+export enum PredefinedScore {
 	P0 = '0',
 	P1 = '1',
 	P2 = '2',
@@ -39,13 +41,13 @@ export enum Score {
 
 interface ISession {
 	master: string
-	players: { [email: string]: { firstScore: Score, lastScore: Score, timestamp: string } }
-	scores: Score[]
+	players: { [email: string]: { firstScore: string, lastScore: string, timestamp: string } }
+	scores: string[]
 }
 
 const basisPlayerScore = {
-	firstScore: Score.Unvoted,
-	lastScore: Score.Unvoted,
+	firstScore: '',
+	lastScore: '',
 	timestamp: new Date().toISOString(),
 }
 
@@ -61,6 +63,7 @@ export default function Planning(props: {
 	const [scrumMasterTransferDialogVisible, setScrumMasterTransferDialogVisible] = React.useState(false)
 	const [scoreSelectionDialogVisible, setScoreSelectionDialogVisible] = React.useState(false)
 	const [invitationQRCode, setInvitationQRCode] = React.useState('')
+	const [customScore, setCustomScore] = React.useState('')
 	const [beginning, setBeginning] = React.useState(Date.now())
 
 	React.useEffect(() => {
@@ -73,7 +76,7 @@ export default function Planning(props: {
 				const session: ISession = {
 					master: props.currentUser.email,
 					players: {},
-					scores: Object.values(Score).filter(score => score !== Score.Unvoted),
+					scores: Object.values(PredefinedScore),
 				}
 				await props.document.set(session)
 			}
@@ -113,8 +116,8 @@ export default function Planning(props: {
 		props.document.update({
 			players: _.mapValues(data.players, player => ({
 				...player,
-				firstScore: Score.Unvoted,
-				lastScore: Score.Unvoted,
+				firstScore: '',
+				lastScore: '',
 			})),
 		})
 
@@ -136,7 +139,7 @@ export default function Planning(props: {
 	const currentUserCanVote = !!data.players[props.currentUser.email]
 
 	const everyoneIsVoted = _.isEmpty(data.players) === false &&
-		_.every(data.players, player => player.lastScore !== Score.Unvoted)
+		_.every(data.players, player => player.lastScore !== '')
 
 	const otherPlayerEmails = _.chain(data.players).keys().without(props.currentUser.email).sortBy().value()
 
@@ -278,37 +281,73 @@ export default function Planning(props: {
 			<Dialog open={scoreSelectionDialogVisible} onClose={() => { setScoreSelectionDialogVisible(false) }}>
 				<DialogTitle>Edit scores</DialogTitle>
 				<List>
-					{Object.values(Score).filter(score => score !== Score.Unvoted).map(score => (
-						<ListItem button key={score} onClick={() => {
-							if (data.scores.includes(score)) {
-								props.document.update(
-									new Firebase.firestore.FieldPath('scores'),
-									Firebase.firestore.FieldValue.arrayRemove(score),
-									..._.chain(data.players)
-										.toPairs()
-										.filter(([email, player]) => player.firstScore === score || player.lastScore === score)
-										.map(([email, player]) => [
-											new Firebase.firestore.FieldPath('players', email),
-											{
-												...player,
-												firstScore: Score.Unvoted,
-												lastScore: Score.Unvoted,
-												timestamp: new Date().toISOString()
-											}
-										])
-										.flatten()
-										.value()
-								)
-							} else {
-								props.document.update({
-									scores: Object.values(Score).filter(σ => σ !== Score.Unvoted).filter(σ => data.scores.includes(σ) || σ === score)
-								})
-							}
-						}}>
-							<Checkbox checked={data.scores.includes(score)} />
+					{data.scores.map(score => (
+						<ListItem key={score}>
 							{score}
+							<ListItemSecondaryAction>
+								<IconButton edge="end" aria-label="delete" onClick={() => {
+									props.document.update(
+										new Firebase.firestore.FieldPath('scores'),
+										Firebase.firestore.FieldValue.arrayRemove(score),
+										// Remove the select score from the players who voted
+										..._.chain(data.players)
+											.toPairs()
+											.filter(([email, player]) => player.firstScore === score || player.lastScore === score)
+											.map(([email, player]) => [
+												new Firebase.firestore.FieldPath('players', email),
+												{
+													...player,
+													firstScore: '',
+													lastScore: '',
+													timestamp: new Date().toISOString()
+												}
+											])
+											.flatten()
+											.value()
+									)
+								}}>
+									<Icon>clear</Icon>
+								</IconButton>
+							</ListItemSecondaryAction>
 						</ListItem>
 					))}
+					<ListItem>
+						<form onSubmit={(e) => {
+							e.preventDefault()
+
+							if (customScore === '' || data.scores.includes(customScore)) {
+								return
+							}
+
+							props.document.update(
+								new Firebase.firestore.FieldPath('scores'),
+								_.chain(data.scores)
+									.push(customScore)
+									.sortBy(
+										score => score === '?' ? 1 : 0,
+										score => /[¼½¾]/.test(score) ? '0' : score,
+									)
+									.value()
+							)
+
+							setCustomScore('')
+						}}>
+							<Input
+								type="text"
+								placeholder="Custom score"
+								fullWidth
+								value={customScore}
+								onChange={e => {
+									setCustomScore(_.trim(e.target.value))
+								}}
+							/>
+							<ListItemSecondaryAction>
+								<IconButton type="submit" edge="end" aria-label="add">
+									<Icon>add_circle</Icon>
+								</IconButton>
+							</ListItemSecondaryAction>
+						</form>
+					</ListItem>
 				</List>
 			</Dialog>
 		</div >
@@ -320,7 +359,7 @@ export default function Planning(props: {
 		</div>
 	)
 
-	const myScore = currentUserCanVote ? data.players[props.currentUser.email].lastScore : Score.Unvoted
+	const myScore = currentUserCanVote ? data.players[props.currentUser.email].lastScore : ''
 
 	if (everyoneIsVoted) {
 		const sortedScores = _.chain(data.scores)
@@ -400,7 +439,7 @@ export default function Planning(props: {
 				{timer}
 				<FlexBox>
 					{_.isEmpty(data.players)
-						? <span className='planning_hint'>You are the scrum master — waiting for others to join this session.</span>
+						? <span className='planning__hint'>You are the scrum master — waiting for others to join this session.</span>
 						: <PeerProgress players={data.players} grand />}
 				</FlexBox>
 				{floatingButtons}
@@ -445,7 +484,7 @@ function PeerProgress(props: {
 		.toPairs()
 		.map(([email, player]) => ({ ...player, email }))
 		.sortBy(
-			player => player.lastScore === Score.Unvoted ? 1 : 0,
+			player => player.lastScore === '' ? 1 : 0,
 			player => player.timestamp
 		)
 		.value()
@@ -454,7 +493,7 @@ function PeerProgress(props: {
 		<FlipMove className={_.compact(['planning__players', '--free', props.grand && '--tall']).join(' ')}>
 			{sortedPlayers.map(({ email, lastScore }) =>
 				<div key={email}>
-					<Avatar email={email} faded={lastScore === Score.Unvoted} size={props.grand ? 120 : 36} />
+					<Avatar email={email} faded={lastScore === ''} size={props.grand ? 120 : 36} />
 				</div>
 			)}
 		</FlipMove>

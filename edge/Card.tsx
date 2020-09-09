@@ -3,13 +3,11 @@ import Button from '@material-ui/core/Button'
 
 import './Card.less'
 
-import { Score } from './Planning'
-
 export default function Card(props: {
-	children: Score
+	children: string
 	selected?: boolean
 	disabled?: boolean
-	onClick?: (score: Score) => void
+	onClick?: (score: string) => void
 }) {
 	return (
 		<Button
