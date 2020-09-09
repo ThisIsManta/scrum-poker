@@ -25,8 +25,8 @@
 	},
 	"homepage": "https://github.com/ThisIsManta/scrum-poker#readme",
 	"devDependencies": {
-		"@types/lodash": "^4.14.160",
-		"@types/react": "^16.9.47",
+		"@types/lodash": "^4.14.161",
+		"@types/react": "^16.9.49",
 		"@types/react-dom": "^16.9.8",
 		"@types/react-router-dom": "^5.1.5",
 		"less": "^3.12.2",
@@ -36,7 +36,7 @@
 	"dependencies": {
 		"@material-ui/core": "^4.11.0",
 		"@material-ui/lab": "^4.0.0-alpha.56",
-		"firebase": "^7.19.0",
+		"firebase": "^7.19.1",
 		"lodash": "^4.17.20",
 		"qrcode": "^1.4.4",
 		"react": "^16.13.1",
