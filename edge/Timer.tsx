@@ -1,13 +1,13 @@
-import * as React from 'react'
-import * as _ from 'lodash'
+import React, { useState, useEffect } from 'react'
+import { padStart } from 'lodash-es'
 
 export default function Timer(props: {
 	beginning: number
 }) {
-	const [, updateState] = React.useState()
+	const [, updateState] = useState<any>()
 	const forceUpdate = React.useCallback(() => updateState({}), [])
 
-	React.useEffect(() => {
+	useEffect(() => {
 		const timerId = window.setInterval(forceUpdate, 1000)
 		return () => {
 			window.clearInterval(timerId)
@@ -26,7 +26,7 @@ export default function Timer(props: {
 
 	return (
 		<div className='timer'>
-			{_.padStart(String(Math.floor(seconds / 60)), 2, '0')}:{_.padStart(String(seconds % 60), 2, '0')}
+			{padStart(String(Math.floor(seconds / 60)), 2, '0')}:{padStart(String(seconds % 60), 2, '0')}
 		</div>
 	)
 }

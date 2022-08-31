@@ -4,8 +4,8 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
-		"start": "parcel ./edge/index.html --open",
-		"build": "rm docs/*.js docs/*.css docs/*.map && parcel build ./edge/index.html --out-dir docs --public-url ./",
+		"start": "vite --open --host --port 1234",
+		"build": "tsc && rm -rf docs && vite build",
 		"preversion": "npm run build && git add docs/* && git commit -m \"Build\" && git push --dry-run origin master:master",
 		"postversion": "git push --tags origin master:master"
 	},
@@ -25,23 +25,30 @@
 	},
 	"homepage": "https://github.com/ThisIsManta/scrum-poker#readme",
 	"devDependencies": {
-		"@types/lodash": "^4.14.161",
-		"@types/react": "^16.9.49",
-		"@types/react-dom": "^16.9.8",
-		"@types/react-router-dom": "^5.1.5",
-		"less": "^3.12.2",
-		"parcel-bundler": "^1.12.4",
-		"typescript": "^4.0.2"
+		"@types/lodash-es": "^4.17.6",
+		"@types/qrcode": "^1.5.0",
+		"@types/react": "^18.0.18",
+		"@types/react-dom": "^18.0.6",
+		"@vitejs/plugin-react": "^2.0.1",
+		"less": "^4.1.3",
+		"typescript": "^4.8.2",
+		"vite": "^3.0.9"
 	},
 	"dependencies": {
-		"@material-ui/core": "^4.11.0",
-		"@material-ui/lab": "^4.0.0-alpha.56",
+		"@emotion/react": "^11.10.4",
+		"@emotion/styled": "^11.10.4",
+		"@mui/icons-material": "^5.10.3",
+		"@mui/material": "^5.10.3",
 		"firebase": "^7.19.1",
-		"lodash": "^4.17.20",
-		"qrcode": "^1.4.4",
-		"react": "^16.13.1",
-		"react-dom": "^16.13.1",
+		"lodash-es": "^4.17.21",
+		"notistack": "^2.0.5",
+		"qrcode": "^1.5.1",
+		"react": "^18.2.0",
+		"react-dom": "^18.2.0",
 		"react-flip-move": "^3.0.4",
-		"react-router-dom": "^5.2.0"
+		"react-router-dom": "^6.3.0"
+	},
+	"volta": {
+		"node": "16.17.0"
 	}
 }

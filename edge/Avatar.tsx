@@ -1,11 +1,10 @@
-import * as _ from 'lodash'
-import * as React from 'react'
+import React from 'react'
 
 import './Avatar.less'
 import { getAcronym } from './getAcronym'
 
 export default function Avatar(props: {
-	email?: string
+	email: string
 	children?: React.ReactNode
 	size?: number
 	faded?: boolean

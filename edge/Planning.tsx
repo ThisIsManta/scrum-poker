@@ -1,21 +1,31 @@
-import * as Firebase from 'firebase/app'
-import * as React from 'react'
-import Container from '@material-ui/core/Container'
-import Grid from '@material-ui/core/Grid'
-import Fab from '@material-ui/core/Fab'
-import Icon from '@material-ui/core/Icon'
-import IconButton from '@material-ui/core/IconButton'
-import Dialog from '@material-ui/core/Dialog'
-import DialogTitle from '@material-ui/core/DialogTitle'
-import List from '@material-ui/core/List'
-import ListItem from '@material-ui/core/ListItem'
-import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
-import TextField from '@material-ui/core/TextField'
-import Input from '@material-ui/core/Input'
-import SpeedDial from '@material-ui/lab/SpeedDial'
-import SpeedDialAction from '@material-ui/lab/SpeedDialAction'
-import Slide from '@material-ui/core/Slide'
-import * as _ from 'lodash'
+import Firebase from 'firebase/app'
+import React, { useState, useEffect } from 'react'
+import Container from '@mui/material/Container'
+import Grid from '@mui/material/Grid'
+import Fab from '@mui/material/Fab'
+import IconButton from '@mui/material/IconButton'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
+import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction'
+import Input from '@mui/material/Input'
+import SpeedDial from '@mui/material/SpeedDial'
+import SpeedDialAction from '@mui/material/SpeedDialAction'
+import Slide from '@mui/material/Slide'
+import TuneIcon from '@mui/icons-material/Tune'
+import AutorenewIcon from '@mui/icons-material/Autorenew'
+import QrCodeIcon from '@mui/icons-material/QrCode2'
+import IndeterminateCheckBoxIcon from '@mui/icons-material/IndeterminateCheckBox'
+import CheckBoxIcon from '@mui/icons-material/CheckBox'
+import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline'
+import EjectIcon from '@mui/icons-material/Eject'
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever'
+import CallMissedOutgoingIcon from '@mui/icons-material/CallMissedOutgoing'
+import ClearIcon from '@mui/icons-material/Clear'
+import AddCircleIcon from '@mui/icons-material/AddCircle'
+import { noop, mapValues, isEmpty, isError, every, compact, without, sortBy, orderBy } from 'lodash-es'
 import FlipMove from 'react-flip-move'
 import * as QRCode from 'qrcode'
 
@@ -25,6 +35,11 @@ import Avatar from './Avatar'
 import FlexBox from './FlexBox'
 import Timer from './Timer'
 import { getAcronym } from './getAcronym'
+import useFlashMessage from './useFlashMessage'
+
+// Bypass the issue when using FlipMove with React v18
+// See https://github.com/joshwcomeau/react-flip-move/issues/273
+const FlipMoveHack = FlipMove as any as React.ComponentType<{ className: string, children: React.ReactNode }>
 
 export enum PredefinedScore {
 	P0 = '0',
@@ -52,29 +67,29 @@ const basisPlayerScore = {
 }
 
 export default function Planning(props: {
-	currentUser: Firebase.User
+	currentUserEmail: string
 	document: Firebase.firestore.DocumentReference
 	onSessionDeleted: () => void
-	showFlashMessage: (message: string) => void
 }) {
-	const [data, setData] = React.useState<ISession>()
-	const [speedDialMenuVisible, setSpeedDialMenuVisible] = React.useState(false)
-	const [personRemovalDialogVisible, setRemovalPersonDialogVisible] = React.useState(false)
-	const [scrumMasterTransferDialogVisible, setScrumMasterTransferDialogVisible] = React.useState(false)
-	const [scoreSelectionDialogVisible, setScoreSelectionDialogVisible] = React.useState(false)
-	const [invitationQRCode, setInvitationQRCode] = React.useState('')
-	const [customScore, setCustomScore] = React.useState('')
-	const [beginning, setBeginning] = React.useState(Date.now())
+	const [data, setData] = useState<ISession>()
+	const [speedDialMenuVisible, setSpeedDialMenuVisible] = useState(false)
+	const [personRemovalDialogVisible, setRemovalPersonDialogVisible] = useState(false)
+	const [scrumMasterTransferDialogVisible, setScrumMasterTransferDialogVisible] = useState(false)
+	const [scoreSelectionDialogVisible, setScoreSelectionDialogVisible] = useState(false)
+	const [invitationQRCode, setInvitationQRCode] = useState<string | null>(null)
+	const [customScore, setCustomScore] = useState('')
+	const [beginning, setBeginning] = useState(Date.now())
+	const { showErrorMessage } = useFlashMessage()
 
-	React.useEffect(() => {
-		let unsubscribe = _.noop;
+	useEffect(() => {
+		let unsubscribe = noop;
 		let unmounted = false;
 
 		(async () => {
 			let { exists } = await props.document.get()
 			if (!exists) {
 				const session: ISession = {
-					master: props.currentUser.email,
+					master: props.currentUserEmail,
 					players: {},
 					scores: Object.values(PredefinedScore),
 				}
@@ -82,9 +97,9 @@ export default function Planning(props: {
 			}
 
 			const session = (await props.document.get()).data() as ISession
-			if (session.master !== props.currentUser.email && session.players[props.currentUser.email] === undefined) {
+			if (session.master !== props.currentUserEmail && session.players[props.currentUserEmail] === undefined) {
 				await props.document.update(
-					new Firebase.firestore.FieldPath('players', props.currentUser.email),
+					new Firebase.firestore.FieldPath('players', props.currentUserEmail),
 					basisPlayerScore
 				)
 			}
@@ -96,8 +111,8 @@ export default function Planning(props: {
 			unsubscribe = props.document.onSnapshot(snapshot => {
 				const session = snapshot.data() as ISession
 
-				if (!session || session.players[props.currentUser.email] === undefined && session.master !== props.currentUser.email) {
-					props.showFlashMessage('You have been removed from the session')
+				if (!session || session.players[props.currentUserEmail] === undefined && session.master !== props.currentUserEmail) {
+					showErrorMessage('You have been removed from the session')
 					props.onSessionDeleted()
 					return
 				}
@@ -114,7 +129,7 @@ export default function Planning(props: {
 
 	const onSessionReset = () => {
 		props.document.update({
-			players: _.mapValues(data.players, player => ({
+			players: mapValues(data?.players || {}, player => ({
 				...player,
 				firstScore: '',
 				lastScore: '',
@@ -135,39 +150,39 @@ export default function Planning(props: {
 		return null
 	}
 
-	const currentUserIsScrumMaster = data.master === props.currentUser.email
-	const currentUserCanVote = !!data.players[props.currentUser.email]
+	const currentUserIsScrumMaster = data.master === props.currentUserEmail
+	const currentUserCanVote = !!data.players[props.currentUserEmail]
 
-	const everyoneIsVoted = _.isEmpty(data.players) === false &&
-		_.every(data.players, player => player.lastScore !== '')
+	const everyoneIsVoted = isEmpty(data.players) === false &&
+		every(data.players, player => player.lastScore !== '')
 
-	const otherPlayerEmails = _.chain(data.players).keys().without(props.currentUser.email).sortBy().value()
+	const otherPlayerEmails = sortBy(without(Object.keys(data.players), props.currentUserEmail))
 
 	const floatingButtons = (
 		<div className='planning__buttons'>
 			{currentUserIsScrumMaster && everyoneIsVoted && (
 				<Fab color='primary' onClick={onSessionReset}>
-					<Icon>autorenew</Icon>
+					<AutorenewIcon />
 				</Fab>
 			)}
 
 			<SpeedDial
 				ariaLabel='SpeedDial'
 				open={speedDialMenuVisible}
-				icon={<Icon>menu</Icon>}
+				icon={<TuneIcon />}
 				onClick={() => {
 					setSpeedDialMenuVisible(value => !value)
 				}}
 			>
 				{currentUserIsScrumMaster && (<SpeedDialAction
 					className='planning__speed-dial'
-					icon={<Icon>person_add</Icon>}
+					icon={<QrCodeIcon />}
 					tooltipTitle='Show QRCode'
 					tooltipOpen
 					onClick={() => {
 						QRCode.toDataURL(window.location.href, { width: 600 }, (error, url) => {
 							if (error) {
-								window.alert(_.isString(error) ? error : String(error))
+								window.alert(isError(error) ? error.message : String(error))
 								return
 							}
 
@@ -178,7 +193,7 @@ export default function Planning(props: {
 				/>)}
 				{currentUserIsScrumMaster && <SpeedDialAction
 					className='planning__speed-dial'
-					icon={<Icon>{currentUserCanVote ? 'indeterminate_check_box' : 'check_box'}</Icon>}
+					icon={currentUserCanVote ? <IndeterminateCheckBoxIcon /> : <CheckBoxIcon />}
 					tooltipTitle={currentUserCanVote ? 'Leave the voting' : 'Join the voting'}
 					tooltipOpen
 					onClick={() => {
@@ -191,7 +206,7 @@ export default function Planning(props: {
 				/>}
 				{currentUserIsScrumMaster && <SpeedDialAction
 					className='planning__speed-dial'
-					icon={<Icon>amp_stories</Icon>}
+					icon={<DashboardCustomizeIcon />}
 					tooltipTitle='Edit scores'
 					tooltipOpen
 					onClick={() => {
@@ -201,7 +216,7 @@ export default function Planning(props: {
 				/>}
 				{currentUserIsScrumMaster && otherPlayerEmails.length > 0 && <SpeedDialAction
 					className='planning__speed-dial'
-					icon={<Icon>remove_circle_outline</Icon>}
+					icon={<RemoveCircleOutlineIcon />}
 					tooltipTitle='Remove a person'
 					tooltipOpen
 					onClick={() => {
@@ -211,7 +226,7 @@ export default function Planning(props: {
 				/>}
 				{currentUserIsScrumMaster && otherPlayerEmails.length > 0 && <SpeedDialAction
 					className='planning__speed-dial'
-					icon={<Icon>eject</Icon>}
+					icon={<EjectIcon />}
 					tooltipTitle='Transfer scrum master role'
 					tooltipOpen
 					onClick={() => {
@@ -221,7 +236,7 @@ export default function Planning(props: {
 				/>}
 				{currentUserIsScrumMaster ? (<SpeedDialAction
 					className='planning__speed-dial'
-					icon={<Icon>delete_forever</Icon>}
+					icon={<DeleteForeverIcon />}
 					tooltipTitle='Delete this session'
 					tooltipOpen
 					onClick={() => {
@@ -229,17 +244,17 @@ export default function Planning(props: {
 					}}
 				/>) : (<SpeedDialAction
 					className='planning__speed-dial'
-					icon={<Icon>call_missed_outgoing</Icon>}
+					icon={<CallMissedOutgoingIcon />}
 					tooltipTitle='Leave this session'
 					tooltipOpen
 					onClick={() => {
-						onPersonRemoved(props.currentUser.email)
+						onPersonRemoved(props.currentUserEmail)
 					}}
 				/>)}
 			</SpeedDial>
 
 			<Dialog open={!!invitationQRCode} onClose={() => { setInvitationQRCode(null) }}>
-				<img src={invitationQRCode} style={{ width: '100%', height: '100%' }} />
+				<img src={invitationQRCode!} style={{ width: '100%', height: '100%' }} />
 			</Dialog>
 
 			<Dialog open={personRemovalDialogVisible} onClose={() => { setRemovalPersonDialogVisible(false) }}>
@@ -266,7 +281,7 @@ export default function Planning(props: {
 							})
 							if (!currentUserCanVote) {
 								props.document.update(
-									new Firebase.firestore.FieldPath('players', props.currentUser.email),
+									new Firebase.firestore.FieldPath('players', props.currentUserEmail),
 									basisPlayerScore,
 								)
 							}
@@ -290,10 +305,9 @@ export default function Planning(props: {
 										new Firebase.firestore.FieldPath('scores'),
 										Firebase.firestore.FieldValue.arrayRemove(score),
 										// Remove the select score from the players who voted
-										..._.chain(data.players)
-											.toPairs()
+										...Object.entries(data.players)
 											.filter(([email, player]) => player.firstScore === score || player.lastScore === score)
-											.map(([email, player]) => [
+											.flatMap(([email, player]) => [
 												new Firebase.firestore.FieldPath('players', email),
 												{
 													...player,
@@ -302,11 +316,9 @@ export default function Planning(props: {
 													timestamp: new Date().toISOString()
 												}
 											])
-											.flatten()
-											.value()
 									)
 								}}>
-									<Icon>clear</Icon>
+									<ClearIcon />
 								</IconButton>
 							</ListItemSecondaryAction>
 						</ListItem>
@@ -321,13 +333,11 @@ export default function Planning(props: {
 
 							props.document.update(
 								new Firebase.firestore.FieldPath('scores'),
-								_.chain(data.scores)
-									.push(customScore)
-									.sortBy(
-										score => score === '?' ? 1 : 0,
-										score => /[¼½¾]/.test(score) ? '0' : score,
-									)
-									.value()
+								sortBy(
+									[...data.scores, customScore],
+									score => score === '?' ? 1 : 0,
+									score => /[¼½¾]/.test(score) ? '0' : score,
+								)
 							)
 
 							setCustomScore('')
@@ -338,12 +348,12 @@ export default function Planning(props: {
 								fullWidth
 								value={customScore}
 								onChange={e => {
-									setCustomScore(_.trim(e.target.value))
+									setCustomScore(e.target.value.trim())
 								}}
 							/>
 							<ListItemSecondaryAction>
 								<IconButton type="submit" edge="end" aria-label="add">
-									<Icon>add_circle</Icon>
+									<AddCircleIcon />
 								</IconButton>
 							</ListItemSecondaryAction>
 						</form>
@@ -353,34 +363,31 @@ export default function Planning(props: {
 		</div >
 	)
 
-	const timer = currentUserIsScrumMaster && _.isEmpty(data.players) === false && (
+	const timer = currentUserIsScrumMaster && isEmpty(data.players) === false && (
 		<div className='planning__timer'>
 			<Timer beginning={beginning} />
 		</div>
 	)
 
-	const myScore = currentUserCanVote ? data.players[props.currentUser.email].lastScore : ''
+	const myScore = currentUserCanVote ? data.players[props.currentUserEmail].lastScore : ''
 
 	if (everyoneIsVoted) {
-		const sortedScores = _.chain(data.scores)
-			.map(score => ({
+		const sortedScores = orderBy(
+			data.scores.map(score => ({
 				score,
-				count: _.chain(data.players).filter(player => player.firstScore === score).value().length,
-			}))
-			.orderBy(result => result.count, 'desc')
-			.map(result => result.score)
-			.value()
+				count: Object.entries(data.players).filter(([email, player]) => player.firstScore === score).length,
+			})),
+			result => result.count, 'desc'
+		).map(result => result.score)
 
-		const finalResults = _.chain(sortedScores)
+		const finalResults = sortedScores
 			.map(score => ({
 				score,
-				voters: _.chain(data.players)
-					.toPairs()
-					.filter(([, player]) => player.lastScore === score)
-					.sortBy(([, player]) => player.timestamp)
-					.value()
+				voters: sortBy(
+					Object.entries(data.players).filter(([, player]) => player.lastScore === score),
+					([, player]) => player.timestamp
+				)
 			}))
-			.value()
 
 		return (
 			<React.Fragment>
@@ -388,39 +395,38 @@ export default function Planning(props: {
 				<Container className='planning__results' maxWidth='sm'>
 					<Slide direction='up' in timeout={900}>
 						<Grid container direction='column' spacing={2}>
-							{finalResults.map(result => (
-								<Grid item key={result.score}>
+							{finalResults.map(({ score, voters }) => (
+								<Grid item key={score}>
 									<Grid container direction='row' spacing={2}>
 										<Grid item>
 											<Card
-												selected={currentUserCanVote ? result.score === myScore : false}
-												disabled={!currentUserCanVote}
-												onClick={score => {
+												selected={currentUserCanVote ? score === myScore : false}
+												onClick={currentUserCanVote ? (() => {
 													if (score === myScore) {
 														return
 													}
 
 													props.document.update(
-														new Firebase.firestore.FieldPath('players', props.currentUser.email),
+														new Firebase.firestore.FieldPath('players', props.currentUserEmail),
 														{
-															...data.players[props.currentUser.email],
+															...data.players[props.currentUserEmail],
 															lastScore: score,
 															timestamp: new Date().toISOString(),
 														}
 													)
-												}}
+												}) : undefined}
 											>
-												{result.score}
+												{score}
 											</Card>
 										</Grid>
 										<Grid item className='planning__flex-full'>
-											<FlipMove className='planning__players --left'>
-												{result.voters.map(([email]) => (
+											<FlipMoveHack className='planning__players --left'>
+												{voters.map(([email]) => (
 													<div key={email}>
 														<Avatar email={email} />
 													</div>
 												))}
-											</FlipMove>
+											</FlipMoveHack>
 										</Grid>
 									</Grid>
 								</Grid>
@@ -438,7 +444,7 @@ export default function Planning(props: {
 			<React.Fragment>
 				{timer}
 				<FlexBox>
-					{_.isEmpty(data.players)
+					{isEmpty(data.players)
 						? <span className='planning__hint'>You are the scrum master — waiting for others to join this session.</span>
 						: <PeerProgress players={data.players} grand />}
 				</FlexBox>
@@ -455,11 +461,11 @@ export default function Planning(props: {
 					<Card
 						key={score}
 						selected={score === myScore}
-						onClick={score => {
+						onClick={() => {
 							props.document.update(
-								new Firebase.firestore.FieldPath('players', props.currentUser.email),
+								new Firebase.firestore.FieldPath('players', props.currentUserEmail),
 								{
-									...data.players[props.currentUser.email],
+									...data.players[props.currentUserEmail],
 									firstScore: score,
 									lastScore: score,
 									timestamp: new Date().toISOString(),
@@ -480,22 +486,19 @@ function PeerProgress(props: {
 	players: ISession['players']
 	grand?: boolean
 }) {
-	const sortedPlayers = _.chain(props.players)
-		.toPairs()
-		.map(([email, player]) => ({ ...player, email }))
-		.sortBy(
-			player => player.lastScore === '' ? 1 : 0,
-			player => player.timestamp
-		)
-		.value()
+	const sortedPlayers = sortBy(
+		Object.entries(props.players).map(([email, player]) => ({ ...player, email })),
+		player => player.lastScore === '' ? 1 : 0,
+		player => player.timestamp
+	)
 
 	return (
-		<FlipMove className={_.compact(['planning__players', '--free', props.grand && '--tall']).join(' ')}>
+		<FlipMoveHack className={compact(['planning__players', '--free', props.grand && '--tall']).join(' ')}>
 			{sortedPlayers.map(({ email, lastScore }) =>
 				<div key={email}>
 					<Avatar email={email} faded={lastScore === ''} size={props.grand ? 120 : 36} />
 				</div>
 			)}
-		</FlipMove>
+		</FlipMoveHack>
 	)
 }

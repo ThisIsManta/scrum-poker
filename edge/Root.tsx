@@ -1,13 +1,14 @@
-import * as Firebase from 'firebase/app'
-import * as React from 'react'
-import { RouteComponentProps } from 'react-router-dom'
-import * as _ from 'lodash'
-import CircularProgress from '@material-ui/core/CircularProgress'
+import Firebase from 'firebase/app'
+import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { memoize, isError } from 'lodash-es'
+import CircularProgress from '@mui/material/CircularProgress'
 
 import './Root.less'
 import Lobby from './Lobby'
 import Planning from './Planning'
 import FlexBox from './FlexBox'
+import useFlashMessage from './useFlashMessage'
 
 function signIn() {
 	const authProvider = new Firebase.auth.GoogleAuthProvider()
@@ -15,17 +16,16 @@ function signIn() {
 	Firebase.auth().signInWithRedirect(authProvider)
 }
 
-export default function Root(props: {
-	session: string
-	navigateTo: (session: string) => void
-	showFlashMessage: (message: string) => void
-}) {
-	const [loading, setLoading] = React.useState(true)
-	const [currentUser, setCurrentUser] = React.useState<Firebase.User>(null)
+export default function Root() {
+	const [loading, setLoading] = useState(true)
+	const [currentUser, setCurrentUser] = useState<Firebase.User | null>(null)
+	const { showErrorMessage } = useFlashMessage()
+	const [searchParams, setSearchParams] = useSearchParams()
+	const sessionName = searchParams.toString()
 
-	const getDocument = _.memoize((session: string) => Firebase.firestore().collection('planning').doc(session.toLowerCase()))
+	const getDocument = memoize((session: string) => Firebase.firestore().collection('planning').doc(session.toLowerCase()))
 
-	React.useEffect(() => {
+	useEffect(() => {
 		Firebase.initializeApp({
 			apiKey: "AIzaSyBpIZCRRZC-FpsnilNZRCsUTbyw2eLc1xY",
 			authDomain: "scrum-poker-3108b.firebaseapp.com",
@@ -36,32 +36,32 @@ export default function Root(props: {
 			appId: "1:657180291314:web:d521e4de69812513"
 		})
 
-		if (!props.session) {
+		if (!sessionName) {
 			setLoading(false)
 			return
 		}
 
 		return Firebase.auth().onAuthStateChanged(user => {
 			if (user && user.emailVerified) {
-				getDocument(props.session).get().then(() => {
+				getDocument(sessionName).get().then(() => {
 					setCurrentUser(user)
 				}).catch(error => {
-					if (error.code === 'permission-denied') {
-						props.showFlashMessage('Access denied.')
+					if ('code' in error && error.code === 'permission-denied') {
+						showErrorMessage('Access denied.')
 					} else {
-						props.showFlashMessage(_.isString(error) ? error : error.message)
+						showErrorMessage(isError(error) ? error.message : String(error))
 					}
-					props.navigateTo('')
+					setSearchParams('')
 				}).finally(() => {
 					setLoading(false)
 				})
 
-			} else if (props.session) {
+			} else if (sessionName) {
 				signIn()
 
 			} else {
 				setCurrentUser(null)
-				props.navigateTo('')
+				setSearchParams('')
 			}
 		})
 	}, [])
@@ -74,15 +74,15 @@ export default function Root(props: {
 		)
 	}
 
-	if (!props.session || !currentUser) {
+	if (!sessionName || !currentUser?.email) {
 		return (
 			<Lobby
-				session={window.sessionStorage.getItem('session') || ''}
+				sessionName={window.sessionStorage.getItem('session') || ''}
 				onSubmit={session => {
 					session = session.toLowerCase()
 					window.sessionStorage.setItem('session', session)
 
-					props.navigateTo(session)
+					setSearchParams(session)
 					signIn()
 				}}
 			/>
@@ -91,12 +91,11 @@ export default function Root(props: {
 
 	return (
 		<Planning
-			currentUser={currentUser}
-			document={getDocument(props.session)}
+			currentUserEmail={currentUser.email}
+			document={getDocument(sessionName)}
 			onSessionDeleted={() => {
-				props.navigateTo('')
+				setSearchParams('')
 			}}
-			showFlashMessage={props.showFlashMessage}
 		/>
 	)
 }

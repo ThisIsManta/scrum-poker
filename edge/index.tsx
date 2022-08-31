@@ -1,40 +1,36 @@
-import * as _ from 'lodash'
-import * as React from 'react'
-import { render } from 'react-dom'
+import React from 'react'
+import { createRoot } from 'react-dom/client'
 import 'firebase/auth'
 import 'firebase/firestore'
-import { BrowserRouter, Switch, Route, Redirect, RouteComponentProps } from 'react-router-dom'
-import { createMuiTheme, MuiThemeProvider } from '@material-ui/core/styles'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { ThemeProvider, createTheme } from '@mui/material/styles'
+import { SnackbarProvider } from 'notistack'
 
 import './index.less'
 import Root from './Root'
-import Flash from './Flash'
+import packageJSON from '../package.json'
 
-render((
-	<MuiThemeProvider theme={createMuiTheme({ palette: { type: 'dark', primary: { main: '#ffffff' } } })}>
-		<BrowserRouter>
-			<Switch>
-				<Route path='/scrum-poker' >
-					{({ history, location }: RouteComponentProps<{ session: string }>) => (
-						<Flash>
-							{showFlashMessage => (
-								<Root
-									session={location.search.replace(/^\?/, '')}
-									navigateTo={session => {
-										history.push('/scrum-poker' + (session ? '?' + session : ''))
-									}}
-									showFlashMessage={showFlashMessage}
-								/>
+const repositoryName = packageJSON.repository.url.match(/\/([\w-]+?)\.git$/)![1]
+const landingPath = '/' + repositoryName
 
-							)}
-						</Flash>
-					)}
-				</Route>
-				<Route>
-					{/* Because of GitHub Pages, the path name must start with "/scrum-poker" */}
-					<Redirect to='/scrum-poker' />
-				</Route>
-			</Switch>
-		</BrowserRouter>
-	</MuiThemeProvider>
-), document.getElementById('root'))
+const root = createRoot(document.getElementById('root')!)
+root.render(
+	<ThemeProvider theme={createTheme({ palette: { mode: 'dark', primary: { main: '#ffffff' } } })}>
+		<SnackbarProvider
+			anchorOrigin={{
+				vertical: 'top',
+				horizontal: 'center',
+			}}
+		>
+			<BrowserRouter>
+				<Routes >
+					<Route path={landingPath} element={<Root />} />
+					<Route>
+						{/* Because of GitHub Pages, the path name must start with the name of the repository */}
+						<Navigate to={landingPath} />
+					</Route>
+				</Routes>
+			</BrowserRouter>
+		</SnackbarProvider>
+	</ThemeProvider>
+)

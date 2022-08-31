@@ -1,18 +1,18 @@
-import * as React from 'react'
-import * as _ from 'lodash'
-import Container from '@material-ui/core/Container'
-import Grid from '@material-ui/core/Grid'
-import TextField from '@material-ui/core/TextField'
-import Button from '@material-ui/core/Button'
+import React, { useState } from 'react'
+import { kebabCase } from 'lodash-es'
+import Container from '@mui/material/Container'
+import Grid from '@mui/material/Grid'
+import TextField from '@mui/material/TextField'
+import Button from '@mui/material/Button'
 
 import './Lobby.less'
 import FlexBox from './FlexBox'
 
 export default function Lobby(props: {
-	session: string
-	onSubmit?: (session: string) => void
+	sessionName: string
+	onSubmit?: (sessionName: string) => void
 }) {
-	const [session, setSession] = React.useState(props.session)
+	const [session, setSession] = useState(props.sessionName)
 
 	return (
 		<FlexBox>
@@ -35,10 +35,10 @@ export default function Lobby(props: {
 							value={session}
 							onChange={e => {
 								const value = e.target.value
-								setSession(_.kebabCase(value) + (/\W$/.test(value) ? '-' : ''))
+								setSession(kebabCase(value) + (/\W$/.test(value) ? '-' : ''))
 							}}
 							onKeyUp={e => {
-								if (e.key === 'Enter' && session) {
+								if (e.key === 'Enter' && session && props.onSubmit) {
 									props.onSubmit(session)
 								}
 							}}
@@ -50,7 +50,7 @@ export default function Lobby(props: {
 							size='large'
 							variant='outlined'
 							onClick={() => {
-								props.onSubmit(session)
+								props.onSubmit?.(session)
 							}}
 							disabled={!session || !props.onSubmit}
 						>
