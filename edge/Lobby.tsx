@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { kebabCase } from 'lodash-es'
 import Container from '@mui/material/Container'
 import Grid from '@mui/material/Grid'
 import TextField from '@mui/material/TextField'
@@ -10,9 +9,9 @@ import FlexBox from './FlexBox'
 
 export default function Lobby(props: {
 	sessionName: string
-	onSubmit?: (sessionName: string) => void
+	onSubmit: (sessionName: string) => void
 }) {
-	const [session, setSession] = useState(props.sessionName)
+	const [sessionName, setSessionName] = useState(props.sessionName)
 
 	return (
 		<FlexBox>
@@ -32,14 +31,14 @@ export default function Lobby(props: {
 							helperText='Create a new session and become a scrum master or join an existing one by its name. Share the session name to your colleagues.'
 							InputLabelProps={{ shrink: true }}
 							fullWidth
-							value={session}
+							value={sessionName}
 							onChange={e => {
-								const value = e.target.value
-								setSession(kebabCase(value) + (/\W$/.test(value) ? '-' : ''))
+								const value = e.target.value.trim()
+								setSessionName(urlFriendlyCase(value))
 							}}
 							onKeyUp={e => {
-								if (e.key === 'Enter' && session && props.onSubmit) {
-									props.onSubmit(session)
+								if (e.key === 'Enter' && sessionName && props.onSubmit) {
+									props.onSubmit(sessionName)
 								}
 							}}
 							autoFocus
@@ -50,9 +49,9 @@ export default function Lobby(props: {
 							size='large'
 							variant='outlined'
 							onClick={() => {
-								props.onSubmit?.(session)
+								props.onSubmit(sessionName)
 							}}
-							disabled={!session || !props.onSubmit}
+							disabled={!sessionName}
 						>
 							Join
 						</Button>
@@ -61,4 +60,8 @@ export default function Lobby(props: {
 			</Container>
 		</FlexBox>
 	)
+}
+
+function urlFriendlyCase(text: string) {
+	return text.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-/, '').substring(0, 256)
 }

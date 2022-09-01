@@ -25,9 +25,9 @@ root.render(
 			<BrowserRouter>
 				<Routes >
 					<Route path={landingPath} element={<Root />} />
-					<Route>
-						{/* Because of GitHub Pages, the path name must start with the name of the repository */}
-						<Navigate to={landingPath} />
+
+					{/* Because of GitHub Pages, the path name must start with the name of the repository */}
+					<Route path='/' element={<Navigate to={landingPath} />}>
 					</Route>
 				</Routes>
 			</BrowserRouter>

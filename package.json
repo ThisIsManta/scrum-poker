@@ -39,7 +39,7 @@
 		"@emotion/styled": "^11.10.4",
 		"@mui/icons-material": "^5.10.3",
 		"@mui/material": "^5.10.3",
-		"firebase": "^7.19.1",
+		"firebase": "^9.9.3",
 		"lodash-es": "^4.17.21",
 		"notistack": "^2.0.5",
 		"qrcode": "^1.5.1",

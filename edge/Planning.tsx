@@ -1,5 +1,4 @@
-import Firebase from 'firebase/app'
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import Container from '@mui/material/Container'
 import Grid from '@mui/material/Grid'
 import Fab from '@mui/material/Fab'
@@ -14,7 +13,7 @@ import SpeedDial from '@mui/material/SpeedDial'
 import SpeedDialAction from '@mui/material/SpeedDialAction'
 import Slide from '@mui/material/Slide'
 import TuneIcon from '@mui/icons-material/Tune'
-import AutorenewIcon from '@mui/icons-material/Autorenew'
+import AutoRenewIcon from '@mui/icons-material/Autorenew'
 import QrCodeIcon from '@mui/icons-material/QrCode2'
 import IndeterminateCheckBoxIcon from '@mui/icons-material/IndeterminateCheckBox'
 import CheckBoxIcon from '@mui/icons-material/CheckBox'
@@ -25,9 +24,8 @@ import DeleteForeverIcon from '@mui/icons-material/DeleteForever'
 import CallMissedOutgoingIcon from '@mui/icons-material/CallMissedOutgoing'
 import ClearIcon from '@mui/icons-material/Clear'
 import AddCircleIcon from '@mui/icons-material/AddCircle'
-import { noop, mapValues, isEmpty, isError, every, compact, without, sortBy, orderBy } from 'lodash-es'
+import { isEmpty, isError, every, compact, without, sortBy, orderBy } from 'lodash-es'
 import FlipMove from 'react-flip-move'
-import * as QRCode from 'qrcode'
 
 import './Planning.less'
 import Card from './Card'
@@ -35,43 +33,16 @@ import Avatar from './Avatar'
 import FlexBox from './FlexBox'
 import Timer from './Timer'
 import { getAcronym } from './getAcronym'
-import useFlashMessage from './useFlashMessage'
+import { Session, SessionData } from './useSession'
 
 // Bypass the issue when using FlipMove with React v18
 // See https://github.com/joshwcomeau/react-flip-move/issues/273
 const FlipMoveHack = FlipMove as any as React.ComponentType<{ className: string, children: React.ReactNode }>
 
-export enum PredefinedScore {
-	P0 = '0',
-	P1 = '1',
-	P2 = '2',
-	P3 = '3',
-	P5 = '5',
-	P8 = '8',
-	P13 = '13',
-	P21 = '21',
-	Infinity = '∞',
-	NonDeterminable = '?',
-}
-
-interface ISession {
-	master: string
-	players: { [email: string]: { firstScore: string, lastScore: string, timestamp: string } }
-	scores: string[]
-}
-
-const basisPlayerScore = {
-	firstScore: '',
-	lastScore: '',
-	timestamp: new Date().toISOString(),
-}
-
 export default function Planning(props: {
 	currentUserEmail: string
-	document: Firebase.firestore.DocumentReference
-	onSessionDeleted: () => void
+	session: Session
 }) {
-	const [data, setData] = useState<ISession>()
 	const [speedDialMenuVisible, setSpeedDialMenuVisible] = useState(false)
 	const [personRemovalDialogVisible, setRemovalPersonDialogVisible] = useState(false)
 	const [scrumMasterTransferDialogVisible, setScrumMasterTransferDialogVisible] = useState(false)
@@ -79,90 +50,26 @@ export default function Planning(props: {
 	const [invitationQRCode, setInvitationQRCode] = useState<string | null>(null)
 	const [customScore, setCustomScore] = useState('')
 	const [beginning, setBeginning] = useState(Date.now())
-	const { showErrorMessage } = useFlashMessage()
-
-	useEffect(() => {
-		let unsubscribe = noop;
-		let unmounted = false;
-
-		(async () => {
-			let { exists } = await props.document.get()
-			if (!exists) {
-				const session: ISession = {
-					master: props.currentUserEmail,
-					players: {},
-					scores: Object.values(PredefinedScore),
-				}
-				await props.document.set(session)
-			}
-
-			const session = (await props.document.get()).data() as ISession
-			if (session.master !== props.currentUserEmail && session.players[props.currentUserEmail] === undefined) {
-				await props.document.update(
-					new Firebase.firestore.FieldPath('players', props.currentUserEmail),
-					basisPlayerScore
-				)
-			}
-
-			if (unmounted) {
-				return
-			}
-
-			unsubscribe = props.document.onSnapshot(snapshot => {
-				const session = snapshot.data() as ISession
-
-				if (!session || session.players[props.currentUserEmail] === undefined && session.master !== props.currentUserEmail) {
-					showErrorMessage('You have been removed from the session')
-					props.onSessionDeleted()
-					return
-				}
-
-				setData(session)
-			})
-		})()
-
-		return () => {
-			unmounted = true
-			unsubscribe()
-		}
-	}, [])
 
 	const onSessionReset = () => {
-		props.document.update({
-			players: mapValues(data?.players || {}, player => ({
-				...player,
-				firstScore: '',
-				lastScore: '',
-			})),
-		})
+		props.session.clearAllVotes()
 
 		setBeginning(Date.now())
 	}
 
-	const onPersonRemoved = (email: string) => {
-		props.document.update(
-			new Firebase.firestore.FieldPath('players', email),
-			Firebase.firestore.FieldValue.delete()
-		)
-	}
+	const currentUserIsScrumMaster = props.session.data.master === props.currentUserEmail
+	const currentUserCanVote = !!props.session.data.players[props.currentUserEmail]
 
-	if (!data) {
-		return null
-	}
+	const everyoneIsVoted = isEmpty(props.session.data.players) === false &&
+		every(props.session.data.players, player => player.lastScore !== '')
 
-	const currentUserIsScrumMaster = data.master === props.currentUserEmail
-	const currentUserCanVote = !!data.players[props.currentUserEmail]
-
-	const everyoneIsVoted = isEmpty(data.players) === false &&
-		every(data.players, player => player.lastScore !== '')
-
-	const otherPlayerEmails = sortBy(without(Object.keys(data.players), props.currentUserEmail))
+	const otherPlayerEmails = sortBy(without(Object.keys(props.session.data.players), props.currentUserEmail))
 
 	const floatingButtons = (
 		<div className='planning__buttons'>
 			{currentUserIsScrumMaster && everyoneIsVoted && (
 				<Fab color='primary' onClick={onSessionReset}>
-					<AutorenewIcon />
+					<AutoRenewIcon />
 				</Fab>
 			)}
 
@@ -179,7 +86,8 @@ export default function Planning(props: {
 					icon={<QrCodeIcon />}
 					tooltipTitle='Show QRCode'
 					tooltipOpen
-					onClick={() => {
+					onClick={async () => {
+						const QRCode = await import('qrcode')
 						QRCode.toDataURL(window.location.href, { width: 600 }, (error, url) => {
 							if (error) {
 								window.alert(isError(error) ? error.message : String(error))
@@ -197,10 +105,11 @@ export default function Planning(props: {
 					tooltipTitle={currentUserCanVote ? 'Leave the voting' : 'Join the voting'}
 					tooltipOpen
 					onClick={() => {
-						props.document.update(
-							new Firebase.firestore.FieldPath('players', data.master),
-							currentUserCanVote ? Firebase.firestore.FieldValue.delete() : basisPlayerScore,
-						)
+						if (currentUserCanVote) {
+							props.session.removePlayer(props.currentUserEmail)
+						} else {
+							props.session.clearVote(props.currentUserEmail)
+						}
 						setSpeedDialMenuVisible(false)
 					}}
 				/>}
@@ -240,7 +149,7 @@ export default function Planning(props: {
 					tooltipTitle='Delete this session'
 					tooltipOpen
 					onClick={() => {
-						props.document.delete()
+						props.session.destroy()
 					}}
 				/>) : (<SpeedDialAction
 					className='planning__speed-dial'
@@ -248,7 +157,7 @@ export default function Planning(props: {
 					tooltipTitle='Leave this session'
 					tooltipOpen
 					onClick={() => {
-						onPersonRemoved(props.currentUserEmail)
+						props.session.removePlayer(props.currentUserEmail)
 					}}
 				/>)}
 			</SpeedDial>
@@ -262,7 +171,7 @@ export default function Planning(props: {
 				<List>
 					{otherPlayerEmails.map(email => (
 						<ListItem button key={email} onClick={() => {
-							onPersonRemoved(email)
+							props.session.removePlayer(email)
 							setRemovalPersonDialogVisible(false)
 						}}>
 							{getAcronym(email)} ({email})
@@ -276,15 +185,7 @@ export default function Planning(props: {
 				<List>
 					{otherPlayerEmails.map(email => (
 						<ListItem button key={email} onClick={() => {
-							props.document.update({
-								master: email,
-							})
-							if (!currentUserCanVote) {
-								props.document.update(
-									new Firebase.firestore.FieldPath('players', props.currentUserEmail),
-									basisPlayerScore,
-								)
-							}
+							props.session.transferScrumMasterRole(email)
 							setScrumMasterTransferDialogVisible(false)
 						}}>
 							{getAcronym(email)} ({email})
@@ -296,27 +197,12 @@ export default function Planning(props: {
 			<Dialog open={scoreSelectionDialogVisible} onClose={() => { setScoreSelectionDialogVisible(false) }}>
 				<DialogTitle>Edit scores</DialogTitle>
 				<List>
-					{data.scores.map(score => (
+					{props.session.data.scores.map(score => (
 						<ListItem key={score}>
 							{score}
 							<ListItemSecondaryAction>
 								<IconButton edge="end" aria-label="delete" onClick={() => {
-									props.document.update(
-										new Firebase.firestore.FieldPath('scores'),
-										Firebase.firestore.FieldValue.arrayRemove(score),
-										// Remove the select score from the players who voted
-										...Object.entries(data.players)
-											.filter(([email, player]) => player.firstScore === score || player.lastScore === score)
-											.flatMap(([email, player]) => [
-												new Firebase.firestore.FieldPath('players', email),
-												{
-													...player,
-													firstScore: '',
-													lastScore: '',
-													timestamp: new Date().toISOString()
-												}
-											])
-									)
+									props.session.removeScore(score)
 								}}>
 									<ClearIcon />
 								</IconButton>
@@ -324,21 +210,18 @@ export default function Planning(props: {
 						</ListItem>
 					))}
 					<ListItem>
-						<form onSubmit={(e) => {
+						<form onSubmit={async (e) => {
 							e.preventDefault()
 
-							if (customScore === '' || data.scores.includes(customScore)) {
+							if (customScore === '' || props.session.data.scores.includes(customScore)) {
 								return
 							}
 
-							props.document.update(
-								new Firebase.firestore.FieldPath('scores'),
-								sortBy(
-									[...data.scores, customScore],
-									score => score === '?' ? 1 : 0,
-									score => /[¼½¾]/.test(score) ? '0' : score,
-								)
-							)
+							await props.session.setSelectableScores(sortBy(
+								[...props.session.data.scores, customScore],
+								score => score === '?' ? 1 : 0,
+								score => /[¼½¾]/.test(score) ? '0' : score,
+							))
 
 							setCustomScore('')
 						}}>
@@ -363,19 +246,19 @@ export default function Planning(props: {
 		</div >
 	)
 
-	const timer = currentUserIsScrumMaster && isEmpty(data.players) === false && (
+	const timer = currentUserIsScrumMaster && isEmpty(props.session.data.players) === false && (
 		<div className='planning__timer'>
 			<Timer beginning={beginning} />
 		</div>
 	)
 
-	const myScore = currentUserCanVote ? data.players[props.currentUserEmail].lastScore : ''
+	const myScore = currentUserCanVote ? props.session.data.players[props.currentUserEmail].lastScore : ''
 
 	if (everyoneIsVoted) {
 		const sortedScores = orderBy(
-			data.scores.map(score => ({
+			props.session.data.scores.map(score => ({
 				score,
-				count: Object.entries(data.players).filter(([email, player]) => player.firstScore === score).length,
+				count: Object.entries(props.session.data.players).filter(([email, player]) => player.firstScore === score).length,
 			})),
 			result => result.count, 'desc'
 		).map(result => result.score)
@@ -384,7 +267,7 @@ export default function Planning(props: {
 			.map(score => ({
 				score,
 				voters: sortBy(
-					Object.entries(data.players).filter(([, player]) => player.lastScore === score),
+					Object.entries(props.session.data.players).filter(([, player]) => player.lastScore === score),
 					([, player]) => player.timestamp
 				)
 			}))
@@ -406,14 +289,7 @@ export default function Planning(props: {
 														return
 													}
 
-													props.document.update(
-														new Firebase.firestore.FieldPath('players', props.currentUserEmail),
-														{
-															...data.players[props.currentUserEmail],
-															lastScore: score,
-															timestamp: new Date().toISOString(),
-														}
-													)
+													props.session.castVote(score)
 												}) : undefined}
 											>
 												{score}
@@ -444,9 +320,9 @@ export default function Planning(props: {
 			<React.Fragment>
 				{timer}
 				<FlexBox>
-					{isEmpty(data.players)
+					{isEmpty(props.session.data.players)
 						? <span className='planning__hint'>You are the scrum master — waiting for others to join this session.</span>
-						: <PeerProgress players={data.players} grand />}
+						: <PeerProgress players={props.session.data.players} grand />}
 				</FlexBox>
 				{floatingButtons}
 			</React.Fragment>
@@ -455,22 +331,14 @@ export default function Planning(props: {
 
 	return (
 		<React.Fragment>
-			<PeerProgress players={data.players} />
+			<PeerProgress players={props.session.data.players} />
 			<div className='planning__cards'>
-				{data.scores.map(score => (
+				{props.session.data.scores.map(score => (
 					<Card
 						key={score}
 						selected={score === myScore}
 						onClick={() => {
-							props.document.update(
-								new Firebase.firestore.FieldPath('players', props.currentUserEmail),
-								{
-									...data.players[props.currentUserEmail],
-									firstScore: score,
-									lastScore: score,
-									timestamp: new Date().toISOString(),
-								}
-							)
+							props.session.castVote(score)
 						}}
 					>
 						{score}
@@ -483,7 +351,7 @@ export default function Planning(props: {
 }
 
 function PeerProgress(props: {
-	players: ISession['players']
+	players: SessionData['players']
 	grand?: boolean
 }) {
 	const sortedPlayers = sortBy(
