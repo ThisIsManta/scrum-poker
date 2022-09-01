@@ -1,8 +1,12 @@
 import React, { useMemo } from 'react'
 import { isError, isObject } from 'lodash-es'
 import IconButton from '@mui/material/IconButton'
+import ErrorIcon from '@mui/icons-material/Error'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CloseIcon from '@mui/icons-material/Close'
-import { useSnackbar } from 'notistack'
+import { useSnackbar, SnackbarProvider } from 'notistack'
+
+import './useFlashMessage.less'
 
 export default function useFlashMessage() {
 	const { enqueueSnackbar, closeSnackbar } = useSnackbar()
@@ -14,9 +18,26 @@ export default function useFlashMessage() {
 				preventDuplicate: true,
 			})
 		},
+		showAlertMessage(message: React.ReactNode) {
+			enqueueSnackbar(message, {
+				variant: 'warning',
+				preventDuplicate: true,
+				persist: true,
+				action: (key: string | number) => (
+					<IconButton
+						key="close"
+						color="inherit"
+						size="small"
+						onClick={() => {
+							closeSnackbar(key)
+						}}
+					>
+						<CloseIcon />
+					</IconButton>
+				),
+			})
+		},
 		showErrorMessage(error: React.ReactNode | Error | unknown) {
-			console.error(error)
-
 			const message: React.ReactNode = (() => {
 				if (isError(error)) {
 					return error.message
@@ -55,4 +76,22 @@ export default function useFlashMessage() {
 			closeSnackbar()
 		},
 	}), [])
+}
+
+export function FlashMessageProvider(props: { children: React.ReactNode }) {
+	return (
+		<SnackbarProvider
+			anchorOrigin={{
+				vertical: 'top',
+				horizontal: 'center',
+			}}
+			iconVariant={{
+				success: <CheckCircleIcon />,
+				warning: null,
+				error: <ErrorIcon />,
+			}}
+		>
+			{props.children}
+		</SnackbarProvider>
+	)
 }

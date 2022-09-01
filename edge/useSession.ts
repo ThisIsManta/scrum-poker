@@ -42,7 +42,7 @@ export type Session = NonNullable<ReturnType<typeof useSession>>
 export default function useSession(name: string, currentUserEmail: string | null | undefined) {
 	const sessionReference = useRef<DocumentReference<SessionData>>()
 	const [data, setData] = useState<SessionData | null>(null)
-	const { showErrorMessage } = useFlashMessage()
+	const { showAlertMessage, showErrorMessage } = useFlashMessage()
 
 	useEffect(() => {
 		let unsubscribe = noop
@@ -85,8 +85,14 @@ export default function useSession(name: string, currentUserEmail: string | null
 					unsubscribe = onSnapshot(sessionReference.current, snap => {
 						const data = snap.data()
 
-						if (!data || data.players[currentUserEmail] === undefined && data.master !== currentUserEmail) {
-							showErrorMessage('You have been removed from the session')
+						if (!data) {
+							showAlertMessage('The session has ended.')
+							setData(null)
+							return
+						}
+
+						if (data.players[currentUserEmail] === undefined && data.master !== currentUserEmail) {
+							showAlertMessage('You have been removed from the session.')
 							setData(null)
 							return
 						}
@@ -96,6 +102,7 @@ export default function useSession(name: string, currentUserEmail: string | null
 
 				} catch (error) {
 					if (typeof error === 'object' && error && (error as any).code === 'permission-denied') {
+						console.error(error)
 						showErrorMessage('Remote database permission denied.')
 					} else {
 						showErrorMessage(isError(error) ? error.message : String(error))

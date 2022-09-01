@@ -50,13 +50,24 @@
   display: flex;
   justify-content: flex-end;
   align-items: flex-end;
+  gap: 16px;
 
-  > * {
-    margin-left: 16px !important;
+  @media(min-width: 1440px) {
+    right: 50vw;
+    transform: translateX(50%);
   }
 
-  .planning__speed-dial {
+  @media(min-height: 1440px) {
+    bottom: 20vh;
+  }
+
+  .MuiSpeedDialAction-fab {
     color: black;
+    background: #f5f5f5;
+
+    &:hover {
+      background: #b2b2b2;
+    }
   }
 }
 
@@ -76,7 +87,22 @@
   user-select: none;
 }
 
+.planning__qr-code {
+  cursor: none;
+}
+
+.MuiFab-sizeLarge .MuiSvgIcon-root {
+  @size: 1.5em;
+  width: @size !important;
+  height: @size !important;
+}
+
 .MuiSpeedDialAction-tooltipPlacementLeft
   .MuiSpeedDialAction-staticTooltipLabel {
   white-space: nowrap;
+}
+
+.MuiSpeedDialAction-staticTooltipLabel {
+  background: #424242 !important;
+  cursor: pointer;
 }

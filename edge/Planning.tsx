@@ -12,19 +12,19 @@ import Input from '@mui/material/Input'
 import SpeedDial from '@mui/material/SpeedDial'
 import SpeedDialAction from '@mui/material/SpeedDialAction'
 import Slide from '@mui/material/Slide'
-import TuneIcon from '@mui/icons-material/Tune'
-import AutoRenewIcon from '@mui/icons-material/Autorenew'
+import MenuIcon from '@mui/icons-material/Menu'
+import RefreshIcon from '@mui/icons-material/Refresh'
 import QrCodeIcon from '@mui/icons-material/QrCode2'
-import IndeterminateCheckBoxIcon from '@mui/icons-material/IndeterminateCheckBox'
-import CheckBoxIcon from '@mui/icons-material/CheckBox'
+import StopCircleIcon from '@mui/icons-material/StopCircle'
+import HowToVoteIcon from '@mui/icons-material/HowToVote'
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
-import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline'
-import EjectIcon from '@mui/icons-material/Eject'
-import DeleteForeverIcon from '@mui/icons-material/DeleteForever'
-import CallMissedOutgoingIcon from '@mui/icons-material/CallMissedOutgoing'
+import RemoveCircleIcon from '@mui/icons-material/RemoveCircle'
+import LocalPoliceIcon from '@mui/icons-material/LocalPolice'
+import CancelIcon from '@mui/icons-material/Cancel'
 import ClearIcon from '@mui/icons-material/Clear'
 import AddCircleIcon from '@mui/icons-material/AddCircle'
-import { isEmpty, isError, every, compact, without, sortBy, orderBy } from 'lodash-es'
+import EastIcon from '@mui/icons-material/East'
+import { isEmpty, isError, every, compact, without, sortBy, orderBy, isFinite } from 'lodash-es'
 import FlipMove from 'react-flip-move'
 
 import './Planning.less'
@@ -69,101 +69,108 @@ export default function Planning(props: {
 		<div className='planning__buttons'>
 			{currentUserIsScrumMaster && everyoneIsVoted && (
 				<Fab color='primary' onClick={onSessionReset}>
-					<AutoRenewIcon />
+					<RefreshIcon />
 				</Fab>
 			)}
 
 			<SpeedDial
 				ariaLabel='SpeedDial'
 				open={speedDialMenuVisible}
-				icon={<TuneIcon />}
+				icon={<MenuIcon />}
 				onClick={() => {
 					setSpeedDialMenuVisible(value => !value)
 				}}
 			>
-				{currentUserIsScrumMaster && (<SpeedDialAction
-					className='planning__speed-dial'
-					icon={<QrCodeIcon />}
-					tooltipTitle='Show QRCode'
-					tooltipOpen
-					onClick={async () => {
-						const QRCode = await import('qrcode')
-						QRCode.toDataURL(window.location.href, { width: 600 }, (error, url) => {
-							if (error) {
-								window.alert(isError(error) ? error.message : String(error))
-								return
-							}
+				{currentUserIsScrumMaster && (
+					<SpeedDialAction
+						icon={<QrCodeIcon />}
+						tooltipTitle='Let others join by QRCode'
+						tooltipOpen
+						onClick={async () => {
+							const QRCode = await import('qrcode')
+							QRCode.toDataURL(window.location.href, { width: 600 }, (error, url) => {
+								if (error) {
+									window.alert(isError(error) ? error.message : String(error))
+									return
+								}
 
-							setInvitationQRCode(url)
-						})
-						setSpeedDialMenuVisible(false)
-					}}
-				/>)}
-				{currentUserIsScrumMaster && <SpeedDialAction
-					className='planning__speed-dial'
-					icon={currentUserCanVote ? <IndeterminateCheckBoxIcon /> : <CheckBoxIcon />}
-					tooltipTitle={currentUserCanVote ? 'Leave the voting' : 'Join the voting'}
-					tooltipOpen
-					onClick={() => {
-						if (currentUserCanVote) {
+								setInvitationQRCode(url)
+							})
+							setSpeedDialMenuVisible(false)
+						}}
+					/>
+				)}
+				{currentUserIsScrumMaster && (
+					<SpeedDialAction
+						icon={<DashboardCustomizeIcon />}
+						tooltipTitle='Edit score cards'
+						tooltipOpen
+						onClick={() => {
+							setSpeedDialMenuVisible(false)
+							setScoreSelectionDialogVisible(true)
+						}}
+					/>
+				)}
+				{currentUserIsScrumMaster && (
+					<SpeedDialAction
+						icon={currentUserCanVote ? <StopCircleIcon /> : <HowToVoteIcon />}
+						tooltipTitle={currentUserCanVote ? 'Leave the voting' : 'Join the voting'}
+						tooltipOpen
+						onClick={() => {
+							if (currentUserCanVote) {
+								props.session.removePlayer(props.currentUserEmail)
+							} else {
+								props.session.clearVote(props.currentUserEmail)
+							}
+							setSpeedDialMenuVisible(false)
+						}}
+					/>
+				)}
+				{currentUserIsScrumMaster && otherPlayerEmails.length > 0 && (
+					<SpeedDialAction
+						icon={<LocalPoliceIcon />}
+						tooltipTitle='Transfer your scrum master role'
+						tooltipOpen
+						onClick={() => {
+							setRemovalPersonDialogVisible(true)
+							setSpeedDialMenuVisible(false)
+						}}
+					/>
+				)}
+				{currentUserIsScrumMaster && otherPlayerEmails.length > 0 && (
+					<SpeedDialAction
+						icon={<RemoveCircleIcon />}
+						tooltipTitle='Remove a person'
+						tooltipOpen
+						onClick={() => {
+							setRemovalPersonDialogVisible(true)
+							setSpeedDialMenuVisible(false)
+						}}
+					/>
+				)}
+				{currentUserIsScrumMaster ? (
+					<SpeedDialAction
+						icon={<CancelIcon />}
+						tooltipTitle='End this session'
+						tooltipOpen
+						onClick={() => {
+							props.session.destroy()
+						}}
+					/>
+				) : (
+					<SpeedDialAction
+						icon={<EastIcon />}
+						tooltipTitle='Leave this session'
+						tooltipOpen
+						onClick={() => {
 							props.session.removePlayer(props.currentUserEmail)
-						} else {
-							props.session.clearVote(props.currentUserEmail)
-						}
-						setSpeedDialMenuVisible(false)
-					}}
-				/>}
-				{currentUserIsScrumMaster && <SpeedDialAction
-					className='planning__speed-dial'
-					icon={<DashboardCustomizeIcon />}
-					tooltipTitle='Edit scores'
-					tooltipOpen
-					onClick={() => {
-						setScoreSelectionDialogVisible(true)
-						setSpeedDialMenuVisible(false)
-					}}
-				/>}
-				{currentUserIsScrumMaster && otherPlayerEmails.length > 0 && <SpeedDialAction
-					className='planning__speed-dial'
-					icon={<RemoveCircleOutlineIcon />}
-					tooltipTitle='Remove a person'
-					tooltipOpen
-					onClick={() => {
-						setRemovalPersonDialogVisible(true)
-						setSpeedDialMenuVisible(false)
-					}}
-				/>}
-				{currentUserIsScrumMaster && otherPlayerEmails.length > 0 && <SpeedDialAction
-					className='planning__speed-dial'
-					icon={<EjectIcon />}
-					tooltipTitle='Transfer scrum master role'
-					tooltipOpen
-					onClick={() => {
-						setRemovalPersonDialogVisible(true)
-						setSpeedDialMenuVisible(false)
-					}}
-				/>}
-				{currentUserIsScrumMaster ? (<SpeedDialAction
-					className='planning__speed-dial'
-					icon={<DeleteForeverIcon />}
-					tooltipTitle='Delete this session'
-					tooltipOpen
-					onClick={() => {
-						props.session.destroy()
-					}}
-				/>) : (<SpeedDialAction
-					className='planning__speed-dial'
-					icon={<CallMissedOutgoingIcon />}
-					tooltipTitle='Leave this session'
-					tooltipOpen
-					onClick={() => {
-						props.session.removePlayer(props.currentUserEmail)
-					}}
-				/>)}
+						}}
+					/>
+				)}
 			</SpeedDial>
 
 			<Dialog open={!!invitationQRCode} onClose={() => { setInvitationQRCode(null) }}>
-				<img src={invitationQRCode!} style={{ width: '100%', height: '100%' }} />
+				<img className='planning__qr-code' src={invitationQRCode!} style={{ width: '100%', height: '100%' }} />
 			</Dialog>
 
 			<Dialog open={personRemovalDialogVisible} onClose={() => { setRemovalPersonDialogVisible(false) }}>
@@ -195,7 +202,7 @@ export default function Planning(props: {
 			</Dialog>
 
 			<Dialog open={scoreSelectionDialogVisible} onClose={() => { setScoreSelectionDialogVisible(false) }}>
-				<DialogTitle>Edit scores</DialogTitle>
+				<DialogTitle>Edit score cards</DialogTitle>
 				<List>
 					{props.session.data.scores.map(score => (
 						<ListItem key={score}>
@@ -241,7 +248,7 @@ export default function Planning(props: {
 						}}>
 							<Input
 								type="text"
-								placeholder="Custom score"
+								placeholder="Add custom score"
 								fullWidth
 								value={customScore}
 								onChange={e => {

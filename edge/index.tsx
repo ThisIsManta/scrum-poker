@@ -4,24 +4,28 @@ import 'firebase/auth'
 import 'firebase/firestore'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
-import { SnackbarProvider } from 'notistack'
 
 import './index.less'
 import Root from './Root'
+import { FlashMessageProvider } from './useFlashMessage'
 import packageJSON from '../package.json'
 
 const repositoryName = packageJSON.repository.url.match(/\/([\w-]+?)\.git$/)![1]
 const landingPath = '/' + repositoryName
 
+const theme = createTheme({
+	palette: {
+		mode: 'dark',
+		primary: {
+			main: '#ffffff'
+		},
+	},
+})
+
 const root = createRoot(document.getElementById('root')!)
 root.render(
-	<ThemeProvider theme={createTheme({ palette: { mode: 'dark', primary: { main: '#ffffff' } } })}>
-		<SnackbarProvider
-			anchorOrigin={{
-				vertical: 'top',
-				horizontal: 'center',
-			}}
-		>
+	<ThemeProvider theme={theme}>
+		<FlashMessageProvider>
 			<BrowserRouter>
 				<Routes >
 					<Route path={landingPath} element={<Root />} />
@@ -31,6 +35,6 @@ root.render(
 					</Route>
 				</Routes>
 			</BrowserRouter>
-		</SnackbarProvider>
+		</FlashMessageProvider>
 	</ThemeProvider>
 )

@@ -1,10 +1,14 @@
 .lobby__title {
 	text-align: center;
+	font-family: 'Zen Tokyo Zoo';
 	font-size: 3em;
-	font-weight: 100;
+	font-weight: 200;
+	text-transform: uppercase;
 	margin-bottom: 16px;
+	user-select: none;
 
 	> span {
+		margin: 0 8px;
 		animation-name: rainbow;
 		animation-duration: 15s;
 		animation-iteration-count: infinite;
@@ -42,6 +46,10 @@
 			animation-delay: 0s;
 		}
 	}
+}
+
+.lobby__session-input input {
+	font-family: 'Roboto Mono', monospace !important;
 }
 
 .lobby__button {

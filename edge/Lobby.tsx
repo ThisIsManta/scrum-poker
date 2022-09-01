@@ -30,6 +30,7 @@ export default function Lobby(props: {
 							variant='outlined'
 							helperText='Create a new session and become a scrum master or join an existing one by its name. Share the session name to your colleagues.'
 							InputLabelProps={{ shrink: true }}
+							InputProps={{ className: 'lobby__session-input' }}
 							fullWidth
 							value={sessionName}
 							onChange={e => {
@@ -39,6 +40,8 @@ export default function Lobby(props: {
 							onKeyUp={e => {
 								if (e.key === 'Enter' && sessionName && props.onSubmit) {
 									props.onSubmit(sessionName)
+								} else if (e.key === 'Escape') {
+									setSessionName('')
 								}
 							}}
 							autoFocus
@@ -47,13 +50,13 @@ export default function Lobby(props: {
 					<Grid item className='lobby__button'>
 						<Button
 							size='large'
-							variant='outlined'
+							variant='contained'
 							onClick={() => {
 								props.onSubmit(sessionName)
 							}}
 							disabled={!sessionName}
 						>
-							Join
+							Enter
 						</Button>
 					</Grid>
 				</Grid>
