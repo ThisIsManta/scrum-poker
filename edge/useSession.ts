@@ -23,9 +23,6 @@ export enum PredefinedScore {
 	P3 = '3',
 	P5 = '5',
 	P8 = '8',
-	P13 = '13',
-	P21 = '21',
-	Infinity = '∞',
 	NonDeterminable = '?',
 }
 
