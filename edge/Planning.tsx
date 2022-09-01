@@ -220,7 +220,21 @@ export default function Planning(props: {
 							await props.session.setSelectableScores(sortBy(
 								[...props.session.data.scores, customScore],
 								score => score === '?' ? 1 : 0,
-								score => /[¼½¾]/.test(score) ? '0' : score,
+								score => {
+									if (score === '¼') {
+										return 0.25
+									}
+									if (score === '½') {
+										return 0.5
+									}
+									if (score === '¾') {
+										return 0.75
+									}
+									if (isFinite(parseFloat(score))) {
+										return parseFloat(score)
+									}
+									return score
+								}
 							))
 
 							setCustomScore('')
