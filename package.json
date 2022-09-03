@@ -37,9 +37,11 @@
 	"dependencies": {
 		"@emotion/react": "^11.10.4",
 		"@emotion/styled": "^11.10.4",
+		"@hookstate/core": "^4.0.0-rc21",
 		"@mui/icons-material": "^5.10.3",
 		"@mui/material": "^5.10.3",
 		"firebase": "^9.9.3",
+		"immutable": "^4.1.0",
 		"lodash-es": "^4.17.21",
 		"notistack": "^2.0.5",
 		"qrcode": "^1.5.1",

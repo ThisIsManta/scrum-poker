@@ -32,15 +32,15 @@ import Card from './Card'
 import Avatar from './Avatar'
 import FlexBox from './FlexBox'
 import Timer from './Timer'
-import { getAcronym } from './getAcronym'
 import { Session, SessionData } from './useSession'
+import { User } from './useUser'
 
 // Bypass the issue when using FlipMove with React v18
 // See https://github.com/joshwcomeau/react-flip-move/issues/273
 const FlipMoveHack = FlipMove as any as React.ComponentType<{ className: string, children: React.ReactNode }>
 
 export default function Planning(props: {
-	currentUserEmail: string
+	currentUser: User
 	session: Session
 }) {
 	const [speedDialMenuVisible, setSpeedDialMenuVisible] = useState(false)
@@ -57,13 +57,13 @@ export default function Planning(props: {
 		setBeginning(Date.now())
 	}
 
-	const currentUserIsScrumMaster = props.session.data.master === props.currentUserEmail
-	const currentUserCanVote = !!props.session.data.players[props.currentUserEmail]
+	const currentUserIsScrumMaster = props.session.data.master === props.currentUser.id
+	const currentUserCanVote = !!props.session.data.votes[props.currentUser.id]
 
-	const everyoneIsVoted = isEmpty(props.session.data.players) === false &&
-		every(props.session.data.players, player => player.lastScore !== '')
+	const everyoneIsVoted = isEmpty(props.session.data.votes) === false &&
+		every(props.session.data.votes, player => player.lastScore !== '')
 
-	const otherPlayerEmails = sortBy(without(Object.keys(props.session.data.players), props.currentUserEmail))
+	const otherPlayerIDs = sortBy(without(Object.keys(props.session.data.votes), props.currentUser.id))
 
 	const floatingButtons = (
 		<div className='planning__buttons'>
@@ -118,15 +118,15 @@ export default function Planning(props: {
 						tooltipOpen
 						onClick={() => {
 							if (currentUserCanVote) {
-								props.session.removePlayer(props.currentUserEmail)
+								props.session.removePlayer(props.currentUser.id)
 							} else {
-								props.session.clearVote(props.currentUserEmail)
+								props.session.clearVote(props.currentUser.id)
 							}
 							setSpeedDialMenuVisible(false)
 						}}
 					/>
 				)}
-				{currentUserIsScrumMaster && otherPlayerEmails.length > 0 && (
+				{currentUserIsScrumMaster && otherPlayerIDs.length > 0 && (
 					<SpeedDialAction
 						icon={<LocalPoliceIcon />}
 						tooltipTitle='Transfer your scrum master role'
@@ -137,7 +137,7 @@ export default function Planning(props: {
 						}}
 					/>
 				)}
-				{currentUserIsScrumMaster && otherPlayerEmails.length > 0 && (
+				{currentUserIsScrumMaster && otherPlayerIDs.length > 0 && (
 					<SpeedDialAction
 						icon={<RemoveCircleIcon />}
 						tooltipTitle='Remove a person'
@@ -163,7 +163,7 @@ export default function Planning(props: {
 						tooltipTitle='Leave this session'
 						tooltipOpen
 						onClick={() => {
-							props.session.removePlayer(props.currentUserEmail)
+							props.session.removePlayer(props.currentUser.id)
 						}}
 					/>
 				)}
@@ -176,12 +176,12 @@ export default function Planning(props: {
 			<Dialog open={personRemovalDialogVisible} onClose={() => { setRemovalPersonDialogVisible(false) }}>
 				<DialogTitle>Remove a person</DialogTitle>
 				<List>
-					{otherPlayerEmails.map(email => (
-						<ListItem button key={email} onClick={() => {
-							props.session.removePlayer(email)
+					{otherPlayerIDs.map(userID => (
+						<ListItem button key={userID} onClick={() => {
+							props.session.removePlayer(userID)
 							setRemovalPersonDialogVisible(false)
 						}}>
-							{getAcronym(email)} ({email})
+							{props.currentUser.codeName} ({userID})
 						</ListItem>
 					))}
 				</List>
@@ -190,12 +190,12 @@ export default function Planning(props: {
 			<Dialog open={scrumMasterTransferDialogVisible} onClose={() => { setScrumMasterTransferDialogVisible(false) }}>
 				<DialogTitle>Transfer scrum master role</DialogTitle>
 				<List>
-					{otherPlayerEmails.map(email => (
-						<ListItem button key={email} onClick={() => {
-							props.session.transferScrumMasterRole(email)
+					{otherPlayerIDs.map(userID => (
+						<ListItem button key={userID} onClick={() => {
+							props.session.transferScrumMasterRole(userID)
 							setScrumMasterTransferDialogVisible(false)
 						}}>
-							{getAcronym(email)} ({email})
+							{props.currentUser.codeName} ({userID})
 						</ListItem>
 					))}
 				</List>
@@ -267,19 +267,19 @@ export default function Planning(props: {
 		</div >
 	)
 
-	const timer = currentUserIsScrumMaster && isEmpty(props.session.data.players) === false && (
+	const timer = currentUserIsScrumMaster && isEmpty(props.session.data.votes) === false && (
 		<div className='planning__timer'>
 			<Timer beginning={beginning} />
 		</div>
 	)
 
-	const myScore = currentUserCanVote ? props.session.data.players[props.currentUserEmail].lastScore : ''
+	const myScore = currentUserCanVote ? props.session.data.votes[props.currentUser.id].lastScore : ''
 
 	if (everyoneIsVoted) {
 		const sortedScores = orderBy(
 			props.session.data.scores.map(score => ({
 				score,
-				count: Object.entries(props.session.data.players).filter(([email, player]) => player.firstScore === score).length,
+				count: Object.entries(props.session.data.votes).filter(([userID, player]) => player.firstScore === score).length,
 			})),
 			result => result.count, 'desc'
 		).map(result => result.score)
@@ -288,7 +288,7 @@ export default function Planning(props: {
 			.map(score => ({
 				score,
 				voters: sortBy(
-					Object.entries(props.session.data.players).filter(([, player]) => player.lastScore === score),
+					Object.entries(props.session.data.votes).filter(([, player]) => player.lastScore === score),
 					([, player]) => player.timestamp
 				)
 			}))
@@ -318,9 +318,9 @@ export default function Planning(props: {
 										</Grid>
 										<Grid item className='planning__flex-full'>
 											<FlipMoveHack className='planning__players --left'>
-												{voters.map(([email]) => (
-													<div key={email}>
-														<Avatar email={email} />
+												{voters.map(([userID]) => (
+													<div key={userID}>
+														<Avatar userID={userID} />
 													</div>
 												))}
 											</FlipMoveHack>
@@ -341,9 +341,9 @@ export default function Planning(props: {
 			<React.Fragment>
 				{timer}
 				<FlexBox>
-					{isEmpty(props.session.data.players)
+					{isEmpty(props.session.data.votes)
 						? <span className='planning__hint'>You are the scrum master — waiting for others to join this session.</span>
-						: <PeerProgress players={props.session.data.players} grand />}
+						: <PeerProgress votes={props.session.data.votes} grand />}
 				</FlexBox>
 				{floatingButtons}
 			</React.Fragment>
@@ -352,7 +352,7 @@ export default function Planning(props: {
 
 	return (
 		<React.Fragment>
-			<PeerProgress players={props.session.data.players} />
+			<PeerProgress votes={props.session.data.votes} />
 			<div className='planning__cards'>
 				{props.session.data.scores.map(score => (
 					<Card
@@ -372,20 +372,20 @@ export default function Planning(props: {
 }
 
 function PeerProgress(props: {
-	players: SessionData['players']
+	votes: SessionData['votes']
 	grand?: boolean
 }) {
-	const sortedPlayers = sortBy(
-		Object.entries(props.players).map(([email, player]) => ({ ...player, email })),
+	const sortedVotes = sortBy(
+		Object.entries(props.votes).map(([userID, player]) => ({ ...player, userID })),
 		player => player.lastScore === '' ? 1 : 0,
 		player => player.timestamp
 	)
 
 	return (
 		<FlipMoveHack className={compact(['planning__players', '--free', props.grand && '--tall']).join(' ')}>
-			{sortedPlayers.map(({ email, lastScore }) =>
-				<div key={email}>
-					<Avatar email={email} faded={lastScore === ''} size={props.grand ? 120 : 36} />
+			{sortedVotes.map(({ userID, lastScore }) =>
+				<div key={userID}>
+					<Avatar userID={userID} faded={lastScore === ''} size={props.grand ? 120 : 36} />
 				</div>
 			)}
 		</FlipMoveHack>

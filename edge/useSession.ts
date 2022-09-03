@@ -3,6 +3,7 @@ import { getFirestore, collection, doc, deleteDoc, updateDoc, arrayRemove, delet
 import { isError, noop, mapValues } from 'lodash-es'
 
 import useFlashMessage from './useFlashMessage'
+import { User } from './useUser'
 
 interface Vote {
 	firstScore: string
@@ -12,7 +13,7 @@ interface Vote {
 
 export interface SessionData {
 	master: string
-	players: { [email: string]: Vote } // TODO: rename this field to "votes"
+	votes: { [userID: User['id']]: Vote } // TODO: rename this field to "votes"
 	scores: string[]
 }
 
@@ -36,7 +37,7 @@ function createNoVote(): Vote {
 
 export type Session = NonNullable<ReturnType<typeof useSession>>
 
-export default function useSession(name: string, currentUserEmail: string | null | undefined) {
+export default function useSession(name: string, currentUserID: User['id'] | undefined) {
 	const sessionReference = useRef<DocumentReference<SessionData>>()
 	const [data, setData] = useState<SessionData | null>(null)
 	const { showAlertMessage, showErrorMessage } = useFlashMessage()
@@ -45,7 +46,7 @@ export default function useSession(name: string, currentUserEmail: string | null
 		let unsubscribe = noop
 		let unmounted = false
 
-		if (name && currentUserEmail) {
+		if (name && currentUserID) {
 			(async () => {
 				sessionReference.current = doc(collection(getFirestore(), 'planning') as CollectionReference<SessionData>, name)
 
@@ -56,22 +57,22 @@ export default function useSession(name: string, currentUserEmail: string | null
 
 						if (data === undefined) {
 							data = {
-								master: currentUserEmail,
-								players: {},
+								master: currentUserID,
+								votes: {},
 								scores: Object.values(PredefinedScore),
 							}
 							transaction.set(sessionReference.current!, data)
 						}
 
-						if (data.master !== currentUserEmail && data.players[currentUserEmail] === undefined) {
+						if (data.master !== currentUserID && data.votes[currentUserID] === undefined) {
 							data = {
 								...data,
-								players: {
-									...data.players,
-									[currentUserEmail]: createNoVote(),
+								votes: {
+									...data.votes,
+									[currentUserID]: createNoVote(),
 								}
 							}
-							transaction.update(sessionReference.current!, new FieldPath('players', currentUserEmail), data.players[currentUserEmail])
+							transaction.update(sessionReference.current!, new FieldPath('votes', currentUserID), data.votes[currentUserID])
 						}
 					})
 
@@ -88,7 +89,7 @@ export default function useSession(name: string, currentUserEmail: string | null
 							return
 						}
 
-						if (data.players[currentUserEmail] === undefined && data.master !== currentUserEmail) {
+						if (data.votes[currentUserID] === undefined && data.master !== currentUserID) {
 							showAlertMessage('You have been removed from the session.')
 							setData(null)
 							return
@@ -116,32 +117,40 @@ export default function useSession(name: string, currentUserEmail: string | null
 			unmounted = true
 			unsubscribe()
 		}
-	}, [name, currentUserEmail])
+	}, [name, currentUserID])
 
 	const castVote = useCallback(async (score: string) => {
-		if (!sessionReference.current || !currentUserEmail) {
+		if (!sessionReference.current || !currentUserID) {
 			return
 		}
 
-		await updateDoc(
-			sessionReference.current,
-			new FieldPath('players', currentUserEmail),
-			{
-				...(!data?.players[currentUserEmail].firstScore ? { firstScore: score } : {}),
-				lastScore: score,
-				timestamp: serverTimestamp(),
-			}
-		)
+		if (data?.votes[currentUserID].firstScore) {
+			await updateDoc(
+				sessionReference.current,
+				new FieldPath('votes', currentUserID, 'lastScore'),
+				score,
+			)
+		} else {
+			await updateDoc(
+				sessionReference.current,
+				new FieldPath('votes', currentUserID),
+				{
+					firstScore: score,
+					lastScore: score,
+					timestamp: serverTimestamp(),
+				}
+			)
+		}
 	}, [data])
 
-	const clearVote = useCallback(async (email: string) => {
+	const clearVote = useCallback(async (userID: string) => {
 		if (!sessionReference.current) {
 			return
 		}
 
 		await updateDoc(
 			sessionReference.current,
-			new FieldPath('players', email),
+			new FieldPath('votes', userID),
 			createNoVote()
 		)
 	}, [data])
@@ -153,25 +162,24 @@ export default function useSession(name: string, currentUserEmail: string | null
 
 		await updateDoc(
 			sessionReference.current,
-			{
-				players: mapValues(data?.players || {}, player => createNoVote()),
-			}
+			new FieldPath('votes'),
+			mapValues(data?.votes || {}, () => createNoVote()),
 		)
 	}, [data])
 
-	const removePlayer = useCallback(async (email: string) => {
+	const removePlayer = useCallback(async (userID: string) => {
 		if (!sessionReference.current) {
 			return
 		}
 
 		await updateDoc(
 			sessionReference.current,
-			new FieldPath('players', email),
+			new FieldPath('votes', userID),
 			deleteField()
 		)
 	}, [data])
 
-	const transferScrumMasterRole = useCallback(async (email: string) => {
+	const transferScrumMasterRole = useCallback(async (userID: string) => {
 		if (!sessionReference.current) {
 			return
 		}
@@ -180,9 +188,9 @@ export default function useSession(name: string, currentUserEmail: string | null
 			updateDoc(
 				sessionReference.current,
 				'master',
-				email
+				userID
 			),
-			currentUserEmail && !data?.players[currentUserEmail] && clearVote(currentUserEmail),
+			currentUserID && !data?.votes[currentUserID] && clearVote(currentUserID),
 		])
 	}, [data])
 
@@ -204,10 +212,10 @@ export default function useSession(name: string, currentUserEmail: string | null
 		}
 
 		// Remove the select score from the players who voted
-		const updates = Object.entries(data.players)
-			.filter(([email, player]) => player.firstScore === score || player.lastScore === score)
-			.flatMap(([email, player]) => [
-				new FieldPath('players', email),
+		const updates = Object.entries(data.votes)
+			.filter(([userID, player]) => player.firstScore === score || player.lastScore === score)
+			.flatMap(([userID, player]) => [
+				new FieldPath('votes', userID),
 				{
 					...player,
 					firstScore: '',

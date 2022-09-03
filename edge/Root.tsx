@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, onAuthStateChanged, signInWithRedirect, GoogleAuthProvider, User } from 'firebase/auth'
+import { getAuth, onAuthStateChanged, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth'
 import React, { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -9,6 +9,7 @@ import Lobby from './Lobby'
 import Planning from './Planning'
 import FlexBox from './FlexBox'
 import useSession from './useSession'
+import useUser, { syncUserProfile } from './useUser'
 
 initializeApp({
 	apiKey: "AIzaSyBpIZCRRZC-FpsnilNZRCsUTbyw2eLc1xY",
@@ -27,10 +28,12 @@ function signIn() {
 }
 
 export default function Root() {
-	const [currentUser, setCurrentUser] = useState<User | null>(null)
+	const [currentUserID, setCurrentUserID] = useState<string>()
+	const currentUser = useUser(currentUserID)
+
 	const [searchParams, setSearchParams] = useSearchParams()
 	const sessionName = searchParams.toString().replace(/=*$/, '')
-	const session = useSession(sessionName, currentUser?.email)
+	const session = useSession(sessionName, currentUserID)
 	const prevSession = useRef(session)
 
 	useEffect(() => {
@@ -38,15 +41,16 @@ export default function Root() {
 			return
 		}
 
-		return onAuthStateChanged(getAuth(), user => {
+		return onAuthStateChanged(getAuth(), async (user) => {
 			if (user && user.emailVerified) {
-				setCurrentUser(user)
+				await syncUserProfile(user)
+				setCurrentUserID(user.uid)
 
 			} else if (sessionName) {
 				signIn()
 
 			} else {
-				setCurrentUser(null)
+				setCurrentUserID(undefined)
 				setSearchParams('')
 			}
 		})
@@ -75,7 +79,7 @@ export default function Root() {
 		)
 	}
 
-	if (!session || !currentUser?.email) {
+	if (!session || !currentUser) {
 		return (
 			<FlexBox>
 				<CircularProgress color='primary' />
@@ -85,7 +89,7 @@ export default function Root() {
 
 	return (
 		<Planning
-			currentUserEmail={currentUser.email}
+			currentUser={currentUser}
 			session={session}
 		/>
 	)
