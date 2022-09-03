@@ -133,6 +133,8 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 				sessionReference.current,
 				new FieldPath('votes', currentUserID, 'lastScore'),
 				score,
+				new FieldPath('votes', currentUserID, 'timestamp'),
+				serverTimestamp(),
 			)
 		} else {
 			await updateDoc(
