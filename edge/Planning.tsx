@@ -96,7 +96,6 @@ export default function Planning(props: {
 
 								setInvitationQRCode(url)
 							})
-							setSpeedDialMenuVisible(false)
 						}}
 					/>
 				)}
@@ -106,7 +105,6 @@ export default function Planning(props: {
 						tooltipTitle='Edit score cards'
 						tooltipOpen
 						onClick={() => {
-							setSpeedDialMenuVisible(false)
 							setScoreSelectionDialogVisible(true)
 						}}
 					/>
@@ -122,7 +120,6 @@ export default function Planning(props: {
 							} else {
 								props.session.clearVote(props.currentUser.id)
 							}
-							setSpeedDialMenuVisible(false)
 						}}
 					/>
 				)}
@@ -133,7 +130,6 @@ export default function Planning(props: {
 						tooltipOpen
 						onClick={() => {
 							setRemovalPersonDialogVisible(true)
-							setSpeedDialMenuVisible(false)
 						}}
 					/>
 				)}
@@ -144,7 +140,6 @@ export default function Planning(props: {
 						tooltipOpen
 						onClick={() => {
 							setRemovalPersonDialogVisible(true)
-							setSpeedDialMenuVisible(false)
 						}}
 					/>
 				)}
