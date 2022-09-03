@@ -34,6 +34,7 @@ import FlexBox from './FlexBox'
 import Timer from './Timer'
 import { Session, SessionData } from './useSession'
 import { User } from './useUser'
+import UserListItem from './UserListItem'
 
 // Bypass the issue when using FlipMove with React v18
 // See https://github.com/joshwcomeau/react-flip-move/issues/273
@@ -44,7 +45,7 @@ export default function Planning(props: {
 	session: Session
 }) {
 	const [speedDialMenuVisible, setSpeedDialMenuVisible] = useState(false)
-	const [personRemovalDialogVisible, setRemovalPersonDialogVisible] = useState(false)
+	const [personRemovalDialogVisible, setPersonRemovalDialogVisible] = useState(false)
 	const [scrumMasterTransferDialogVisible, setScrumMasterTransferDialogVisible] = useState(false)
 	const [scoreSelectionDialogVisible, setScoreSelectionDialogVisible] = useState(false)
 	const [invitationQRCode, setInvitationQRCode] = useState<string | null>(null)
@@ -129,7 +130,7 @@ export default function Planning(props: {
 						tooltipTitle='Transfer your scrum master role'
 						tooltipOpen
 						onClick={() => {
-							setRemovalPersonDialogVisible(true)
+							setPersonRemovalDialogVisible(true)
 						}}
 					/>
 				)}
@@ -139,7 +140,7 @@ export default function Planning(props: {
 						tooltipTitle='Remove a person'
 						tooltipOpen
 						onClick={() => {
-							setRemovalPersonDialogVisible(true)
+							setPersonRemovalDialogVisible(true)
 						}}
 					/>
 				)}
@@ -168,16 +169,14 @@ export default function Planning(props: {
 				<img className='planning__qr-code' src={invitationQRCode!} style={{ width: '100%', height: '100%' }} />
 			</Dialog>
 
-			<Dialog open={personRemovalDialogVisible} onClose={() => { setRemovalPersonDialogVisible(false) }}>
+			<Dialog open={personRemovalDialogVisible} onClose={() => { setPersonRemovalDialogVisible(false) }}>
 				<DialogTitle>Remove a person</DialogTitle>
 				<List>
 					{otherPlayerIDs.map(userID => (
-						<ListItem button key={userID} onClick={() => {
+						<UserListItem key={userID} userID={userID} onClick={() => {
 							props.session.removePlayer(userID)
-							setRemovalPersonDialogVisible(false)
-						}}>
-							{props.currentUser.codeName} ({userID})
-						</ListItem>
+							setPersonRemovalDialogVisible(false)
+						}} />
 					))}
 				</List>
 			</Dialog>
@@ -186,12 +185,10 @@ export default function Planning(props: {
 				<DialogTitle>Transfer scrum master role</DialogTitle>
 				<List>
 					{otherPlayerIDs.map(userID => (
-						<ListItem button key={userID} onClick={() => {
+						<UserListItem key={userID} userID={userID} onClick={() => {
 							props.session.transferScrumMasterRole(userID)
 							setScrumMasterTransferDialogVisible(false)
-						}}>
-							{props.currentUser.codeName} ({userID})
-						</ListItem>
+						}} />
 					))}
 				</List>
 			</Dialog>
