@@ -141,7 +141,7 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 				}
 			)
 		}
-	}, [data])
+	}, [data, currentUserID])
 
 	const clearVote = useCallback(async (userID: string) => {
 		if (!sessionReference.current) {
@@ -184,15 +184,17 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 			return
 		}
 
-		await Promise.all([
-			updateDoc(
-				sessionReference.current,
-				'master',
-				userID
-			),
-			currentUserID && !data?.votes[currentUserID] && clearVote(currentUserID),
-		])
-	}, [data])
+		await updateDoc(
+			sessionReference.current,
+			'master',
+			userID
+		)
+
+		// Do not move this action as the scrum master role must be transferred first
+		if (currentUserID && !data?.votes[currentUserID]) {
+			await clearVote(currentUserID)
+		}
+	}, [data, currentUserID])
 
 	const setSelectableScores = useCallback(async (scores: Array<string>) => {
 		if (!sessionReference.current) {
