@@ -240,6 +240,20 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 		await deleteDoc(sessionReference.current)
 	}, [data])
 
+	useEffect(() => {
+		const leave = () => {
+			if (currentUserID) {
+				removePlayer(currentUserID)
+			}
+		}
+
+		window.addEventListener('beforeunload', leave)
+
+		return () => {
+			window.removeEventListener('beforeunload', leave)
+		}
+	}, [removePlayer, currentUserID])
+
 	if (!data) {
 		return null
 	}
