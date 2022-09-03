@@ -201,7 +201,7 @@ export default function Planning(props: {
 							{score}
 							<ListItemSecondaryAction>
 								<IconButton edge="end" aria-label="delete" onClick={() => {
-									props.session.removeScore(score)
+									props.session.removeSelectableScore(score)
 								}}>
 									<ClearIcon />
 								</IconButton>
@@ -216,25 +216,7 @@ export default function Planning(props: {
 								return
 							}
 
-							await props.session.setSelectableScores(sortBy(
-								[...props.session.data.scores, customScore],
-								score => score === '?' ? 1 : 0,
-								score => {
-									if (score === '¼') {
-										return 0.25
-									}
-									if (score === '½') {
-										return 0.5
-									}
-									if (score === '¾') {
-										return 0.75
-									}
-									if (isFinite(parseFloat(score))) {
-										return parseFloat(score)
-									}
-									return score
-								}
-							))
+							await props.session.addSelectableScore(customScore)
 
 							setCustomScore('')
 						}}>
@@ -280,8 +262,8 @@ export default function Planning(props: {
 			.map(score => ({
 				score,
 				voters: sortBy(
-					Object.entries(props.session.data.votes).filter(([, player]) => player.lastScore === score),
-					([, player]) => player.timestamp
+					Object.entries(props.session.data.votes).filter(([, vote]) => vote.lastScore === score),
+					([, vote]) => vote.timestamp
 				)
 			}))
 
@@ -368,9 +350,9 @@ function PeerProgress(props: {
 	grand?: boolean
 }) {
 	const sortedVotes = sortBy(
-		Object.entries(props.votes).map(([userID, player]) => ({ ...player, userID })),
-		player => player.lastScore === '' ? 1 : 0,
-		player => player.timestamp
+		Object.entries(props.votes).map(([userID, vote]) => ({ ...vote, userID })),
+		vote => vote.lastScore === '' ? 1 : 0,
+		vote => vote.timestamp
 	)
 
 	return (

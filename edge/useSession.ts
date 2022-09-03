@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { getFirestore, collection, doc, deleteDoc, updateDoc, arrayRemove, deleteField, onSnapshot, CollectionReference, DocumentReference, FieldPath, serverTimestamp, runTransaction } from 'firebase/firestore'
-import { isError, noop, mapValues } from 'lodash-es'
+import { isError, noop, mapValues, sortBy, union } from 'lodash-es'
 
 import useFlashMessage from './useFlashMessage'
 import { User } from './useUser'
@@ -8,7 +8,7 @@ import { User } from './useUser'
 interface Vote {
 	firstScore: string
 	lastScore: string
-	timestamp: string
+	timestamp: string | { nanoseconds: number } | null
 }
 
 export interface SessionData {
@@ -31,7 +31,7 @@ function createNoVote(): Vote {
 	return {
 		firstScore: '',
 		lastScore: '',
-		timestamp: serverTimestamp() as any as string
+		timestamp: null,
 	}
 }
 
@@ -95,6 +95,10 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 							return
 						}
 
+						if (data.votes[currentUserID]?.lastScore && data.scores.includes(data.votes[currentUserID].lastScore) === false) {
+							clearVote(currentUserID)
+						}
+
 						setData(data)
 					})
 
@@ -141,7 +145,7 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 				}
 			)
 		}
-	}, [data, currentUserID])
+	}, [name, data?.votes, currentUserID])
 
 	const clearVote = useCallback(async (userID: string) => {
 		if (!sessionReference.current) {
@@ -153,7 +157,7 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 			new FieldPath('votes', userID),
 			createNoVote()
 		)
-	}, [data])
+	}, [name])
 
 	const clearAllVotes = useCallback(async () => {
 		if (!sessionReference.current) {
@@ -165,7 +169,7 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 			new FieldPath('votes'),
 			mapValues(data?.votes || {}, () => createNoVote()),
 		)
-	}, [data])
+	}, [name, data?.votes])
 
 	const removePlayer = useCallback(async (userID: string) => {
 		if (!sessionReference.current) {
@@ -177,7 +181,7 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 			new FieldPath('votes', userID),
 			deleteField()
 		)
-	}, [data])
+	}, [name])
 
 	const transferScrumMasterRole = useCallback(async (userID: string) => {
 		if (!sessionReference.current) {
@@ -194,45 +198,51 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 		if (currentUserID && !data?.votes[currentUserID]) {
 			await clearVote(currentUserID)
 		}
-	}, [data, currentUserID])
+	}, [name, data?.votes, currentUserID])
 
-	const setSelectableScores = useCallback(async (scores: Array<string>) => {
-		if (!sessionReference.current) {
-			return
-		}
-
-		await updateDoc(
-			sessionReference.current,
-			new FieldPath('scores'),
-			scores,
-		)
-	}, [data])
-
-	const removeScore = useCallback(async (score: string) => {
+	const addSelectableScore = useCallback(async (...scores: Array<string>) => {
 		if (!sessionReference.current || !data) {
 			return
 		}
 
-		// Remove the select score from the players who voted
-		const updates = Object.entries(data.votes)
-			.filter(([userID, player]) => player.firstScore === score || player.lastScore === score)
-			.flatMap(([userID, player]) => [
-				new FieldPath('votes', userID),
-				{
-					...player,
-					firstScore: '',
-					lastScore: '',
-					timestamp: serverTimestamp(),
+		const newScores = sortBy(
+			union(data.scores, scores),
+			score => score === '?' ? 1 : 0,
+			score => {
+				if (score === '¼') {
+					return 0.25
 				}
-			])
+				if (score === '½') {
+					return 0.5
+				}
+				if (score === '¾') {
+					return 0.75
+				}
+				if (isFinite(parseFloat(score))) {
+					return parseFloat(score)
+				}
+				return score
+			}
+		)
+
+		await updateDoc(
+			sessionReference.current,
+			new FieldPath('scores'),
+			newScores,
+		)
+	}, [name, data?.scores])
+
+	const removeSelectableScore = useCallback(async (score: string) => {
+		if (!sessionReference.current || !data) {
+			return
+		}
 
 		await updateDoc(
 			sessionReference.current,
 			new FieldPath('scores'),
 			arrayRemove(score),
-			...updates
 		)
-	}, [data])
+	}, [name, data?.votes])
 
 	const destroy = useCallback(async () => {
 		if (!sessionReference.current) {
@@ -240,7 +250,7 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 		}
 
 		await deleteDoc(sessionReference.current)
-	}, [data])
+	}, [name])
 
 	useEffect(() => {
 		const leave = () => {
@@ -267,8 +277,8 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 		clearAllVotes,
 		removePlayer,
 		transferScrumMasterRole,
-		setSelectableScores,
-		removeScore,
+		addSelectableScore,
+		removeSelectableScore,
 		destroy,
 	}
 }
