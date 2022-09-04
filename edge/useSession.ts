@@ -13,7 +13,7 @@ interface Vote {
 
 export interface SessionData {
 	master: string
-	votes: { [userID: User['id']]: Vote } // TODO: rename this field to "votes"
+	votes: { [userID: User['id']]: Vote }
 	scores: string[]
 }
 
@@ -124,19 +124,12 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 	}, [name, currentUserID])
 
 	const castVote = useCallback(async (score: string) => {
-		if (!sessionReference.current || !currentUserID) {
+		if (!sessionReference.current || !currentUserID || !data) {
 			return
 		}
 
-		if (data?.votes[currentUserID].firstScore) {
-			await updateDoc(
-				sessionReference.current,
-				new FieldPath('votes', currentUserID, 'lastScore'),
-				score,
-				new FieldPath('votes', currentUserID, 'timestamp'),
-				serverTimestamp(),
-			)
-		} else {
+		const { firstScore, lastScore } = data.votes[currentUserID] || {}
+		if (!firstScore) {
 			await updateDoc(
 				sessionReference.current,
 				new FieldPath('votes', currentUserID),
@@ -145,6 +138,14 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 					lastScore: score,
 					timestamp: serverTimestamp(),
 				}
+			)
+		} else if (lastScore !== score) {
+			await updateDoc(
+				sessionReference.current,
+				new FieldPath('votes', currentUserID, 'lastScore'),
+				score,
+				new FieldPath('votes', currentUserID, 'timestamp'),
+				serverTimestamp(),
 			)
 		}
 	}, [name, data?.votes, currentUserID])
