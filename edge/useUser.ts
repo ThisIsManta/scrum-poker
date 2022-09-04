@@ -46,9 +46,35 @@ export default function useUser(userID: User['id'] | undefined) {
 	return user
 }
 
-export async function syncUserProfile(firebaseUser: FirebaseUser) {
-	const userReference = doc<User>(collection(getFirestore(), 'users') as any, firebaseUser.uid)
+export async function setUser(firebaseUser: FirebaseUser) {
+	const cachedUserKey = `user(${firebaseUser.uid})`
+	const cachedUserSerialized = window.localStorage.getItem(cachedUserKey)
+	if (cachedUserSerialized) {
+		try {
+			const user = JSON.parse(cachedUserSerialized)
 
+			const schema: Record<keyof User, (value: unknown) => boolean> = {
+				id: (value) => typeof value === 'string',
+				email: (value) => typeof value === 'string',
+				fullName: (value) => typeof value === 'string' || value === undefined,
+				codeName: (value) => typeof value === 'string',
+				photo: (value) => typeof value === 'string' || value === undefined,
+			}
+			for (const [field, check] of Object.entries(schema)) {
+				if (check(user[field]) !== true) {
+					throw new Error(`The field "${field}" is not compatible with type User.`)
+				}
+			}
+
+			userStore.set(store => store.set(user.id, user))
+		} catch (error) {
+			console.error(error)
+
+			window.localStorage.removeItem(cachedUserKey)
+		}
+	}
+
+	const userReference = doc<User>(collection(getFirestore(), 'users') as any, firebaseUser.uid)
 	const snap = await getDoc(userReference)
 	const data = snap.data()
 
@@ -60,7 +86,10 @@ export async function syncUserProfile(firebaseUser: FirebaseUser) {
 		photo: firebaseUser.photoURL,
 	}
 
+	// Do not wait for this as Firestore has optimistic updates
 	await setDoc(userReference, user)
 
 	userStore.set(store => store.set(user.id, user))
+
+	window.localStorage.setItem(cachedUserKey, JSON.stringify(user))
 }

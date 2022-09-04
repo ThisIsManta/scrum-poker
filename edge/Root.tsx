@@ -9,7 +9,8 @@ import Lobby from './Lobby'
 import Planning from './Planning'
 import FlexBox from './FlexBox'
 import useSession from './useSession'
-import useUser, { syncUserProfile } from './useUser'
+import useUser, { setUser } from './useUser'
+import useFlashMessage from './useFlashMessage'
 
 initializeApp({
 	apiKey: "AIzaSyBpIZCRRZC-FpsnilNZRCsUTbyw2eLc1xY",
@@ -36,15 +37,20 @@ export default function Root() {
 	const session = useSession(sessionName, currentUserID)
 	const prevSession = useRef(session)
 
+	const { showErrorMessage } = useFlashMessage()
+
 	useEffect(() => {
 		if (!sessionName) {
 			return
 		}
 
-		return onAuthStateChanged(getAuth(), async (user) => {
+		return onAuthStateChanged(getAuth(), (user) => {
 			if (user && user.emailVerified) {
-				await syncUserProfile(user)
 				setCurrentUserID(user.uid)
+				setUser(user).catch((error) => {
+					showErrorMessage(error)
+					setCurrentUserID(undefined)
+				})
 
 			} else if (sessionName) {
 				signIn()
