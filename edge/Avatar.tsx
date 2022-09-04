@@ -1,57 +1,73 @@
-import React from 'react'
-import Tooltip from '@mui/material/Tooltip'
+import React, { useRef, useState } from 'react'
+import { compact } from 'lodash-es'
 
 import './Avatar.less'
 import useUser, { User } from './useUser'
+import PopupHint from './PopupHint'
 
-export default function Avatar(props: {
+type Props = {
+	className?: string
 	userID: User['id']
 	size?: number
+	clued?: boolean
 	faded?: boolean
-}) {
+}
+
+export default React.forwardRef<HTMLDivElement, Props>(function Avatar(props, ref) {
 	const user = useUser(props.userID)
+	const photoReloadCount = useRef(0)
+	const [codeNameForced, setCodeNameForced] = useState(false)
 
 	const size = props.size || 70
 
-	const renderContent = () => {
-		if (user?.photo) {
-			return (
-				<img
-					className='avatar__photo'
-					src={user.photo}
-					onError={(e) => {
-						// Retry loading the image as photos from Google fail often times
-						e.currentTarget.src = user.photo!
-					}}
-				/>
-			)
-		}
+	const content = (
+		<div
+			className={compact(['avatar', props.className]).join(' ')}
+			style={{
+				width: size,
+				height: size,
+				fontSize: Math.ceil(size / 2),
+				opacity: props.faded ? 0.4 : 1,
+			}}
+			data-user-id={props.userID}
+		>
+			{
+				user?.photo && !codeNameForced
+					? (
+						<img
+							className='avatar__photo'
+							src={user.photo}
+							onError={(e) => {
+								// Retry loading the image as photos from Google fail often times
+								e.currentTarget.src = user.photo!
 
-		return user?.codeName
+								photoReloadCount.current += 1
+								if (photoReloadCount.current > 10) {
+									setCodeNameForced(true)
+								}
+							}}
+						/>
+					)
+					: user?.codeName
+			}
+		</div>
+	)
+
+	if (props.clued === false) {
+		return content
 	}
 
 	return (
-		<Tooltip
-			arrow
+		<PopupHint
 			placement='bottom-start'
 			title={
-				<div>
-					<div><strong>{user?.fullName}</strong></div>
-					<div>{user?.email}</div>
-				</div>
+				<React.Fragment>
+					<div>{user?.fullName}</div>
+					<div className='avatar__email'>{user?.email}</div>
+				</React.Fragment>
 			}
 		>
-			<div
-				className='avatar'
-				style={{
-					width: size,
-					height: size,
-					fontSize: Math.ceil(size / 2),
-					opacity: props.faded ? 0.4 : 1,
-				}}
-			>
-				{renderContent()}
-			</div>
-		</Tooltip >
+			{content}
+		</PopupHint >
 	)
-}
+})

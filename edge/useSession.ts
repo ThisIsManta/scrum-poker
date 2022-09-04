@@ -8,7 +8,7 @@ import { User } from './useUser'
 interface Vote {
 	firstScore: string
 	lastScore: string
-	timestamp: string | { nanoseconds: number } | null
+	timestamp: { toMillis: () => number } | null
 }
 
 export interface SessionData {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Container from '@mui/material/Container'
 import Grid from '@mui/material/Grid'
 import Fab from '@mui/material/Fab'
@@ -24,7 +24,8 @@ import CancelIcon from '@mui/icons-material/Cancel'
 import ClearIcon from '@mui/icons-material/Clear'
 import AddCircleIcon from '@mui/icons-material/AddCircle'
 import EastIcon from '@mui/icons-material/East'
-import { isEmpty, isError, every, compact, without, sortBy, orderBy, isFinite } from 'lodash-es'
+import ArrowBackIcon from '@mui/icons-material/ArrowBackIosNew'
+import { isEmpty, isError, some, every, without, sortBy, orderBy, partition } from 'lodash-es'
 import FlipMove from 'react-flip-move'
 
 import './Planning.less'
@@ -33,8 +34,10 @@ import Avatar from './Avatar'
 import FlexBox from './FlexBox'
 import Timer from './Timer'
 import { Session, SessionData } from './useSession'
+import useFlashMessage from './useFlashMessage'
 import { User } from './useUser'
 import UserListItem from './UserListItem'
+import { useTutorial } from './PopupTutorial'
 
 // Bypass the issue when using FlipMove with React v18
 // See https://github.com/joshwcomeau/react-flip-move/issues/273
@@ -51,6 +54,7 @@ export default function Planning(props: {
 	const [invitationQRCode, setInvitationQRCode] = useState<string | null>(null)
 	const [customScore, setCustomScore] = useState('')
 	const [beginning, setBeginning] = useState(Date.now())
+	const { showSuccessMessage } = useFlashMessage()
 
 	const onSessionReset = () => {
 		props.session.clearAllVotes()
@@ -58,19 +62,32 @@ export default function Planning(props: {
 		setBeginning(Date.now())
 	}
 
+	const openQRCodeDialog = async () => {
+		const QRCode = await import('qrcode')
+		QRCode.toDataURL(window.location.href, { width: 600 }, (error, url) => {
+			if (error) {
+				window.alert(isError(error) ? error.message : String(error))
+				return
+			}
+
+			setInvitationQRCode(url)
+		})
+	}
+
 	const currentUserIsScrumMaster = props.session.data.master === props.currentUser.id
 	const currentUserCanVote = !!props.session.data.votes[props.currentUser.id]
 
+	const someoneIsVoted = some(props.session.data.votes, vote => vote.lastScore !== '')
 	const everyoneIsVoted = isEmpty(props.session.data.votes) === false &&
-		every(props.session.data.votes, player => player.lastScore !== '')
+		every(props.session.data.votes, vote => vote.lastScore !== '')
 
 	const otherPlayerIDs = sortBy(without(Object.keys(props.session.data.votes), props.currentUser.id))
 
 	const floatingButtons = (
 		<div className='planning__buttons'>
-			{currentUserIsScrumMaster && everyoneIsVoted && (
-				<Fab color='primary' onClick={onSessionReset}>
-					<RefreshIcon />
+			{currentUserIsScrumMaster && someoneIsVoted && (
+				<Fab classes={{ root: 'planning__clear-button' }} color='primary' variant='extended' size='large' onClick={onSessionReset}>
+					<RefreshIcon className='planning__clear-text' />Restart
 				</Fab>
 			)}
 
@@ -87,17 +104,7 @@ export default function Planning(props: {
 						icon={<QrCodeIcon />}
 						tooltipTitle='Let others join by QRCode'
 						tooltipOpen
-						onClick={async () => {
-							const QRCode = await import('qrcode')
-							QRCode.toDataURL(window.location.href, { width: 600 }, (error, url) => {
-								if (error) {
-									window.alert(isError(error) ? error.message : String(error))
-									return
-								}
-
-								setInvitationQRCode(url)
-							})
-						}}
+						onClick={openQRCodeDialog}
 					/>
 				)}
 				{currentUserIsScrumMaster && (
@@ -166,7 +173,16 @@ export default function Planning(props: {
 			</SpeedDial>
 
 			<Dialog open={!!invitationQRCode} onClose={() => { setInvitationQRCode(null) }}>
-				<img className='planning__qr-code' src={invitationQRCode!} style={{ width: '100%', height: '100%' }} />
+				{invitationQRCode && (
+					<img
+						className='planning__qr-code'
+						src={invitationQRCode!}
+						style={{ width: '100%', height: '100%' }}
+						onClick={() => {
+							setInvitationQRCode(null)
+						}}
+					/>
+				)}
 			</Dialog>
 
 			<Dialog open={personRemovalDialogVisible} onClose={() => { setPersonRemovalDialogVisible(false) }}>
@@ -249,35 +265,55 @@ export default function Planning(props: {
 
 	const myScore = currentUserCanVote ? props.session.data.votes[props.currentUser.id].lastScore : ''
 
+	const sortedScores = orderBy(
+		props.session.data.scores.map(score => ({
+			score,
+			count: Object.entries(props.session.data.votes).filter(([userID, player]) => player.firstScore === score).length,
+		})),
+		result => result.count, 'desc'
+	).map(result => result.score)
+
+	const finalResults = sortedScores
+		.map(score => ({
+			score,
+			voterIDs: sortBy(
+				Object.entries(props.session.data.votes).filter(([, vote]) => vote.lastScore === score),
+				([, vote]) => vote.timestamp?.toMillis()
+			).map(([userID]) => userID),
+		}))
+
+	const alterScore = currentUserCanVote ? finalResults.find(({ score }) => score !== myScore)?.score : undefined
+
+	const [resultVisibleTimestamp, setResultVisibleTimestamp] = useState<number>()
+	useEffect(() => {
+		if (everyoneIsVoted) {
+			setResultVisibleTimestamp(Date.now())
+		} else {
+			setResultVisibleTimestamp(undefined)
+		}
+	}, [everyoneIsVoted])
+
+	const [alterCardTutorial, dismissAlterCardTutorial] = useTutorial(
+		alterScore ? resultVisibleTimestamp : undefined,
+		15000,
+		'.planning__alter-score',
+		'left',
+		<span>Change your mind?<br />Pick a new card right away!</span>
+	)
+
 	if (everyoneIsVoted) {
-		const sortedScores = orderBy(
-			props.session.data.scores.map(score => ({
-				score,
-				count: Object.entries(props.session.data.votes).filter(([userID, player]) => player.firstScore === score).length,
-			})),
-			result => result.count, 'desc'
-		).map(result => result.score)
-
-		const finalResults = sortedScores
-			.map(score => ({
-				score,
-				voters: sortBy(
-					Object.entries(props.session.data.votes).filter(([, vote]) => vote.lastScore === score),
-					([, vote]) => vote.timestamp
-				)
-			}))
-
 		return (
 			<React.Fragment>
 				{timer}
 				<Container className='planning__results' maxWidth='sm'>
 					<Slide direction='up' in timeout={900}>
 						<Grid container direction='column' spacing={2}>
-							{finalResults.map(({ score, voters }) => (
+							{finalResults.map(({ score, voterIDs }) => (
 								<Grid item key={score}>
 									<Grid container direction='row' spacing={2}>
 										<Grid item>
 											<Card
+												className={score === alterScore ? 'planning__alter-score' : ''}
 												selected={currentUserCanVote ? score === myScore : false}
 												onClick={currentUserCanVote ? (() => {
 													if (score === myScore) {
@@ -285,6 +321,9 @@ export default function Planning(props: {
 													}
 
 													props.session.castVote(score)
+
+													// Do not show the tutorial again when it has been fulfilled
+													dismissAlterCardTutorial()
 												}) : undefined}
 											>
 												{score}
@@ -292,7 +331,7 @@ export default function Planning(props: {
 										</Grid>
 										<Grid item className='planning__flex-full'>
 											<FlipMoveHack className='planning__players --left'>
-												{voters.map(([userID]) => (
+												{voterIDs.map(userID => (
 													<div key={userID}>
 														<Avatar userID={userID} />
 													</div>
@@ -305,6 +344,7 @@ export default function Planning(props: {
 						</Grid>
 					</Slide>
 				</Container>
+				{alterCardTutorial}
 				{floatingButtons}
 			</React.Fragment>
 		)
@@ -316,8 +356,12 @@ export default function Planning(props: {
 				{timer}
 				<FlexBox>
 					{isEmpty(props.session.data.votes)
-						? <span className='planning__hint'>You are the scrum master — waiting for others to join this session.</span>
-						: <PeerProgress votes={props.session.data.votes} grand />}
+						? (
+							<span className='planning__hint'>
+								You are the scrum master waiting for others to join by <a href={window.location.href} onClick={async (e) => { e.preventDefault(); await window.navigator.clipboard.writeText(window.location.href); showSuccessMessage('The URL has been copied.') }}>this URL</a> or <a onClick={openQRCodeDialog}>the QR code</a>.
+							</span>
+						)
+						: <PeerProgress votes={props.session.data.votes} large />}
 				</FlexBox>
 				{floatingButtons}
 			</React.Fragment>
@@ -347,21 +391,44 @@ export default function Planning(props: {
 
 function PeerProgress(props: {
 	votes: SessionData['votes']
-	grand?: boolean
+	large?: boolean
 }) {
-	const sortedVotes = sortBy(
-		Object.entries(props.votes).map(([userID, vote]) => ({ ...vote, userID })),
-		vote => vote.lastScore === '' ? 1 : 0,
-		vote => vote.timestamp
+	const unsortedVotes = Object.entries(props.votes).map(([userID, vote]) => ({ ...vote, userID }))
+	const sortedVotes = sortBy(unsortedVotes, vote => vote.timestamp?.toMillis())
+	const [castedVotes, pendingVotes] = partition(sortedVotes, vote => vote.lastScore !== '')
+
+	const oldestTimestamp = sortedVotes[0]?.timestamp?.toMillis()
+	const [tutorial] = useTutorial(
+		oldestTimestamp,
+		10000,
+		'.planning__pending-vote-avatar',
+		'bottom-start',
+		'Waiting to pick a card...'
 	)
 
+	const size = props.large ? 120 : 36
+
 	return (
-		<FlipMoveHack className={compact(['planning__players', '--free', props.grand && '--tall']).join(' ')}>
-			{sortedVotes.map(({ userID, lastScore }) =>
-				<div key={userID}>
-					<Avatar userID={userID} faded={lastScore === ''} size={props.grand ? 120 : 36} />
-				</div>
-			)}
-		</FlipMoveHack>
+		<React.Fragment>
+			<FlipMoveHack className='planning__players --free'>
+				{castedVotes.map(({ userID }) =>
+					<div key={userID}>
+						<Avatar userID={userID} size={size} />
+					</div>
+				)}
+				{castedVotes.length > 0 && pendingVotes.length > 0 && <ArrowBackIcon className='planning__player-arrow' style={{ height: size }} />}
+				{pendingVotes.map(({ userID }) => (
+					<div key={userID}>
+						<Avatar
+							userID={userID}
+							size={size}
+							faded
+							className={pendingVotes[0].userID === userID ? 'planning__pending-vote-avatar' : undefined}
+						/>
+					</div>
+				))}
+			</FlipMoveHack>
+			{tutorial}
+		</React.Fragment>
 	)
 }

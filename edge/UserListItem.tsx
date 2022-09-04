@@ -19,7 +19,7 @@ export default function UserListItem(props: {
 	return (
 		<ListItem button onClick={props.onClick}>
 			<ListItemAvatar>
-				<Avatar userID={props.userID} size={40} />
+				<Avatar userID={props.userID} size={40} clued={false} />
 			</ListItemAvatar>
 			<ListItemText primary={user.fullName} secondary={user.email} />
 		</ListItem>
