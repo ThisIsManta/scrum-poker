@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { UserInfo } from 'firebase/auth'
+import { User as FirebaseUser } from 'firebase/auth'
 import { collection, doc, DocumentReference, getDoc, setDoc, getFirestore, onSnapshot } from 'firebase/firestore'
 import { Map } from 'immutable'
 import { hookstate as createStore, useHookstate as useStore } from '@hookstate/core'
@@ -46,7 +46,7 @@ export default function useUser(userID: User['id'] | undefined) {
 	return user
 }
 
-export async function syncUserProfile(firebaseUser: UserInfo) {
+export async function syncUserProfile(firebaseUser: FirebaseUser) {
 	const userReference = doc<User>(collection(getFirestore(), 'users') as any, firebaseUser.uid)
 
 	const snap = await getDoc(userReference)
@@ -55,7 +55,7 @@ export async function syncUserProfile(firebaseUser: UserInfo) {
 	const user: User = {
 		id: firebaseUser.uid,
 		email: firebaseUser.email!,
-		fullName: firebaseUser.displayName,
+		fullName: firebaseUser.providerData[0]?.displayName || firebaseUser.displayName,
 		codeName: data?.codeName ?? getAcronym(firebaseUser),
 		photo: firebaseUser.photoURL,
 	}
