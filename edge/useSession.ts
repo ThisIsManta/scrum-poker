@@ -12,7 +12,6 @@ interface Vote {
 }
 
 export interface SessionData {
-	master: string
 	votes: { [userID: User['id']]: Vote }
 	scores: string[]
 }
@@ -57,22 +56,10 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 
 						if (data === undefined) {
 							data = {
-								master: currentUserID,
 								votes: {},
 								scores: Object.values(PredefinedScore),
 							}
 							transaction.set(sessionReference.current!, data)
-						}
-
-						if (data.master !== currentUserID && data.votes[currentUserID] === undefined) {
-							data = {
-								...data,
-								votes: {
-									...data.votes,
-									[currentUserID]: createNoVote(),
-								}
-							}
-							transaction.update(sessionReference.current!, new FieldPath('votes', currentUserID), data.votes[currentUserID])
 						}
 					})
 
@@ -81,25 +68,19 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 					}
 
 					unsubscribe = onSnapshot(sessionReference.current, snap => {
-						const data = snap.data()
+						const newData = snap.data()
 
-						if (!data) {
-							showAlertMessage('The session has ended.')
+						if (!newData) {
+							showAlertMessage('The session has been deleted.')
 							setData(null)
 							return
 						}
 
-						if (data.votes[currentUserID] === undefined && data.master !== currentUserID) {
-							showAlertMessage('You have been removed from the session.')
-							setData(null)
-							return
-						}
-
-						if (data.votes[currentUserID]?.lastScore && data.scores.includes(data.votes[currentUserID].lastScore) === false) {
+						if (newData.votes[currentUserID]?.lastScore && newData.scores.includes(newData.votes[currentUserID].lastScore) === false) {
 							clearVote(currentUserID)
 						}
 
-						setData(data)
+						setData(newData)
 					})
 
 				} catch (error) {
@@ -112,7 +93,6 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 				}
 			})()
 
-
 		} else {
 			setData(null)
 		}
@@ -122,6 +102,19 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 			unsubscribe()
 		}
 	}, [name, currentUserID])
+
+	const prevData = useRef(data)
+	const selfRemoval = useRef(false)
+	useEffect(() => {
+		if (currentUserID) {
+			if (prevData.current?.votes[currentUserID] && !data?.votes[currentUserID] && !selfRemoval.current) {
+				showAlertMessage('Someone has removed you from the vote.')
+			}
+		}
+
+		prevData.current = data
+		selfRemoval.current = false
+	}, [data?.votes, currentUserID])
 
 	const castVote = useCallback(async (score: string) => {
 		if (!sessionReference.current || !currentUserID || !data) {
@@ -179,29 +172,14 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 			return
 		}
 
+		selfRemoval.current = userID === currentUserID
+
 		await updateDoc(
 			sessionReference.current,
 			new FieldPath('votes', userID),
 			deleteField()
 		)
-	}, [name])
-
-	const transferScrumMasterRole = useCallback(async (userID: string) => {
-		if (!sessionReference.current) {
-			return
-		}
-
-		await updateDoc(
-			sessionReference.current,
-			'master',
-			userID
-		)
-
-		// Do not move this action as the scrum master role must be transferred first
-		if (currentUserID && !data?.votes[currentUserID]) {
-			await clearVote(currentUserID)
-		}
-	}, [name, data?.votes, currentUserID])
+	}, [name, currentUserID])
 
 	const addSelectableScore = useCallback(async (...scores: Array<string>) => {
 		if (!sessionReference.current || !data) {
@@ -279,7 +257,6 @@ export default function useSession(name: string, currentUserID: User['id'] | und
 		clearVote,
 		clearAllVotes,
 		removePlayer,
-		transferScrumMasterRole,
 		addSelectableScore,
 		removeSelectableScore,
 		destroy,
