@@ -26,9 +26,9 @@ export default function Lobby(props: {
 					<Grid item>
 						<TextField
 							type='text'
-							label='Session'
+							label='Session name'
 							variant='outlined'
-							helperText='Create a new session and become a scrum master or join an existing one by its name. Share the session name to your colleagues.'
+							helperText='Use a hard-to-guess session name to prevent unwanted people joining your session.'
 							InputLabelProps={{ shrink: true }}
 							InputProps={{ className: 'lobby__session-input' }}
 							fullWidth
