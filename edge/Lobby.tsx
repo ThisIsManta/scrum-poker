@@ -34,7 +34,7 @@ export default function Lobby(props: {
 							fullWidth
 							value={sessionName}
 							onChange={e => {
-								const value = e.target.value.trim()
+								const value = e.target.value
 								setSessionName(urlFriendlyCase(value))
 							}}
 							onKeyUp={e => {
