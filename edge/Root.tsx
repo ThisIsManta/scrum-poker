@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, onAuthStateChanged, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth'
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import React, { useState, useEffect, useRef } from 'react'
 import CircularProgress from '@mui/material/CircularProgress'
 
@@ -25,7 +25,7 @@ initializeApp({
 function signIn() {
 	const authProvider = new GoogleAuthProvider()
 	authProvider.setCustomParameters({ prompt: 'select_account' })
-	signInWithRedirect(getAuth(), authProvider)
+	return signInWithPopup(getAuth(), authProvider)
 }
 
 export default function Root() {
@@ -44,8 +44,9 @@ export default function Root() {
 		}
 	}, [sessionName])
 
+	useEffect(() => {
 		return onAuthStateChanged(getAuth(), (user) => {
-			if (user && user.emailVerified) {
+			if (user?.emailVerified) {
 				setCurrentUserID(user.uid)
 				setUser(user).catch((error) => {
 					showErrorMessage(error)
@@ -53,14 +54,29 @@ export default function Root() {
 				})
 
 			} else if (sessionName) {
-				signIn()
+				signIn().catch(error => {
+					if (error.code === 'auth/popup-closed-by-user') {
+						// Do nothing
+
+					} else if (error.code === 'auth/popup-blocked') {
+						// Do nothing as users will be prompted to unblock the popup when clicking "Enter" button manually
+
+					} else {
+						console.error(error)
+						showErrorMessage('An error occurred while signing in.')
+					}
+
+					// Go back to the lobby
+					setSessionName('')
+				})
 
 			} else {
+				// Signing out
+				setSessionName('')
 				setCurrentUserID(undefined)
-				setSearchParams('')
 			}
 		})
-	}, [])
+	}, [sessionName])
 
 	useEffect(() => {
 		// Go back to the lobby when the current session is destroyed
