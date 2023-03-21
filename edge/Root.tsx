@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, onAuthStateChanged, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth'
 import React, { useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import CircularProgress from '@mui/material/CircularProgress'
 
 import './Root.less'
@@ -11,6 +10,7 @@ import FlexBox from './FlexBox'
 import useSession from './useSession'
 import useUser, { setUser } from './useUser'
 import useFlashMessage from './useFlashMessage'
+import useHash from './useHash'
 
 initializeApp({
 	apiKey: "AIzaSyBpIZCRRZC-FpsnilNZRCsUTbyw2eLc1xY",
@@ -32,17 +32,17 @@ export default function Root() {
 	const [currentUserID, setCurrentUserID] = useState<string>()
 	const currentUser = useUser(currentUserID)
 
-	const [searchParams, setSearchParams] = useSearchParams()
-	const sessionName = searchParams.toString().replace(/=*$/, '')
+	const [sessionName, setSessionName] = useHash()
 	const session = useSession(sessionName, currentUserID)
 	const prevSession = useRef(session)
 
 	const { showErrorMessage } = useFlashMessage()
 
 	useEffect(() => {
-		if (!sessionName) {
-			return
+		if (sessionName) {
+			window.sessionStorage.setItem('sessionName', sessionName)
 		}
+	}, [sessionName])
 
 		return onAuthStateChanged(getAuth(), (user) => {
 			if (user && user.emailVerified) {
@@ -65,7 +65,7 @@ export default function Root() {
 	useEffect(() => {
 		// Go back to the lobby when the current session is destroyed
 		if (prevSession.current && !session) {
-			setSearchParams('')
+			setSessionName('')
 		}
 
 		prevSession.current = session
@@ -74,12 +74,9 @@ export default function Root() {
 	if (!sessionName) {
 		return (
 			<Lobby
-				sessionName={window.sessionStorage.getItem('session') || ''}
+				sessionName={window.sessionStorage.getItem('sessionName') || ''}
 				onSubmit={sessionName => {
-					window.sessionStorage.setItem('session', sessionName)
-
-					setSearchParams(sessionName)
-					signIn()
+					setSessionName(sessionName)
 				}}
 			/>
 		)
